@@ -1,7 +1,12 @@
 from sanic import Sanic
-from sanic.response import html
+from sanic.response import redirect
 from app.api.health import health_bp
-from app.api.weather import weather_bp
+from app.api.datatest import main_bp
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Sanic("weather-api")
 
@@ -9,17 +14,15 @@ app = Sanic("weather-api")
 app.static("/static", "./app/static")
 
 
-# Basic frontend route
+# Redirect old admin route to new main page
 @app.get("/admin")
-async def admin_page(request):
-    with open("./app/templates/index.html", "r", encoding="utf-8") as f:
-        content = f.read()
-    return html(content)
+async def admin_redirect(request):
+    return redirect("/")
 
 
 # Register blueprints
 app.blueprint(health_bp)
-app.blueprint(weather_bp)
+app.blueprint(main_bp)
 
 if __name__ == "__main__":
     import os
