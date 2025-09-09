@@ -1,0 +1,16 @@
+[project]
+name = "weather-api"
+version = "0.1.0"
+description = "Weather localization API using Sanic"
+requires-python = ">=3.8"
+
+dependencies = [
+    "sanic>=23.12.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "black>=23.0.0",
+]
