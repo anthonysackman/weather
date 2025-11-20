@@ -2,7 +2,6 @@
 
 import httpx
 import os
-import base64
 from dataclasses import dataclass
 from typing import Optional
 import logging
@@ -41,15 +40,12 @@ class AstronomyClient:
         self.app_id = os.getenv("ASTRONOMY_API_ID")
         self.app_secret = os.getenv("ASTRONOMY_API_SECRET")
 
-        # Create Basic Auth header as per API docs
+        # Check if credentials are available
         if self.app_id and self.app_secret:
-            auth_string = f"{self.app_id}:{self.app_secret}"
-            self.auth_header = base64.b64encode(auth_string.encode()).decode()
             logger.info(
                 f"[AstronomyClient] Credentials loaded - ID: {self.app_id[:8]}..."
             )
         else:
-            self.auth_header = None
             logger.error("Astronomy API credentials not found in environment variables")
             logger.error("Please set ASTRONOMY_API_ID and ASTRONOMY_API_SECRET")
 
@@ -67,7 +63,7 @@ class AstronomyClient:
         Returns:
             MoonPhase object or None if request failed
         """
-        if not self.auth_header:
+        if not self.app_id or not self.app_secret:
             logger.error("Astronomy API credentials not configured")
             return None
 
@@ -83,19 +79,16 @@ class AstronomyClient:
             "format": "json",
         }
 
-        # Proper Basic Auth as per documentation
-        headers = {"Authorization": f"Basic {self.auth_header}"}
-
         logger.info(f"[AstronomyClient] Making request to: {url}")
         logger.info(f"[AstronomyClient] Params: {params}")
-        logger.info(f"[AstronomyClient] Using Basic Auth (no Origin for server-side)")
+        logger.info(f"[AstronomyClient] Using httpx Basic Auth")
 
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     url,
                     params=params,
-                    headers=headers,
+                    auth=(self.app_id, self.app_secret),
                     timeout=10.0,
                 )
                 logger.info(

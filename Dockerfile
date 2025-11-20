@@ -16,6 +16,12 @@ COPY . .
 # Add the app directory to Python path
 ENV PYTHONPATH=/app
 
+# Create data directory for SQLite database
+RUN mkdir -p /app/data
+
+# Set default database path
+ENV DB_PATH=/app/data/weather_display.db
+
 # Expose port
 EXPOSE 8000
 
