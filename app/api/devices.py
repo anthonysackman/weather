@@ -3,6 +3,7 @@
 from sanic import Blueprint
 from sanic.response import json
 from sanic.request import Request
+from sanic.log import logger
 from app.auth.middleware import require_auth
 from app.database.db import db
 from app.database.models import Device
@@ -10,10 +11,7 @@ from app.services.address_client import AddressClient
 from app.services.weather_client import WeatherClient
 from app.services.astronomy_client import AstronomyClient
 from datetime import datetime
-import logging
 import secrets
-
-logger = logging.getLogger(__name__)
 
 devices_bp = Blueprint("devices", url_prefix="/api")
 
@@ -157,7 +155,9 @@ async def update_device(request: Request, device_id: str):
     """Update device (admin only)."""
     try:
         data = request.json
-        print(f"========== [UPDATE] Received data: {data} ==========")
+        import sys
+        print(f"========== [UPDATE] Received data: {data} ==========", flush=True)
+        sys.stdout.flush()
         logger.info(f"[UPDATE] Received data: {data}")
 
         # Check if device exists

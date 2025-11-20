@@ -61,5 +61,4 @@ if __name__ == "__main__":
     # Default to debug mode for development (set DEBUG=false for production)
     debug_env = os.environ.get("DEBUG", "true").strip()
     debug = debug_env.lower() == "true"
-    # Run in single process mode to fix logging on Windows
-    app.run(host="0.0.0.0", port=port, debug=debug, auto_reload=debug, single_process=True)
+    app.run(host="0.0.0.0", port=port, debug=debug, auto_reload=False, single_process=True)
