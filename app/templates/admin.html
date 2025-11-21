@@ -230,6 +230,96 @@
             outline: none;
             border-color: #667eea;
         }
+        
+        /* Tabs */
+        .tabs {
+            background: white;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 20px;
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab-button:hover {
+            background: #ebebeb;
+            color: #333;
+        }
+        
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 30px;
+            background: white;
+            border-radius: 0 0 12px 12px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* API Testing Styles */
+        .api-test-section {
+            margin-bottom: 30px;
+        }
+        
+        .api-test-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .api-response {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .endpoint-info {
+            background: #e8f4f8;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        
+        .endpoint-info code {
+            background: #d4e9f2;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
     </style>
 </head>
 <body>
@@ -256,12 +346,22 @@
             </form>
         </div>
         
-        <!-- Devices Section (hidden until logged in) -->
+        <!-- Main Content (hidden until logged in) -->
         <div id="devices-section" class="devices-section">
             <div style="margin-bottom: 20px;">
-                <h2 style="display: inline-block;">Your Devices</h2>
+                <h2 style="display: inline-block;">Admin Panel</h2>
                 <button class="btn btn-small logout-btn" onclick="logout()">Logout</button>
             </div>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab-buttons">
+                    <button class="tab-button active" onclick="switchTab('devices')">Devices</button>
+                    <button class="tab-button" onclick="switchTab('api-testing')">API Testing</button>
+                </div>
+                
+                <!-- Devices Tab -->
+                <div id="devices-tab" class="tab-content active">
             
             <div id="device-message"></div>
             
@@ -343,6 +443,67 @@
             <h3 style="margin-bottom: 15px;">Registered Devices</h3>
             <div id="devices-list">
                 <p style="color: #666;">Loading devices...</p>
+            </div>
+                </div>
+                <!-- End Devices Tab -->
+                
+                <!-- API Testing Tab -->
+                <div id="api-testing-tab" class="tab-content">
+                    <div class="api-test-section">
+                        <h3>ESP32 Weather Endpoint</h3>
+                        <div class="endpoint-info">
+                            <strong>Endpoint:</strong> <code>GET /api/device/{device_id}/esp</code><br>
+                            <strong>Description:</strong> Returns optimized weather data for ESP32 displays with minimal memory footprint.
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="test-device-id">Select Device</label>
+                            <select id="test-device-id">
+                                <option value="">Select a device...</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn" onclick="testESPEndpoint()">Test ESP Endpoint</button>
+                        
+                        <div id="esp-response" class="api-response" style="display: none;"></div>
+                    </div>
+                    
+                    <div class="api-test-section">
+                        <h3>Full Weather Data Endpoint</h3>
+                        <div class="endpoint-info">
+                            <strong>Endpoint:</strong> <code>GET /api/data/{device_id}</code><br>
+                            <strong>Description:</strong> Returns comprehensive weather data with filtering options.
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="test-device-id-full">Select Device</label>
+                            <select id="test-device-id-full">
+                                <option value="">Select a device...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="include-weather" checked> Include Weather
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="include-lunar" checked> Include Lunar Data
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="include-solar" checked> Include Solar Data
+                            </label>
+                        </div>
+                        
+                        <button class="btn" onclick="testFullEndpoint()">Test Full Endpoint</button>
+                        
+                        <div id="full-response" class="api-response" style="display: none;"></div>
+                    </div>
+                </div>
+                <!-- End API Testing Tab -->
             </div>
         </div>
     </div>
@@ -607,6 +768,118 @@
             setTimeout(() => {
                 container.innerHTML = '';
             }, 5000);
+        }
+        
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Activate button
+            event.target.classList.add('active');
+            
+            // Load devices into dropdowns when switching to API testing tab
+            if (tabName === 'api-testing') {
+                loadDevicesForTesting();
+            }
+        }
+        
+        // Load devices into testing dropdowns
+        async function loadDevicesForTesting() {
+            try {
+                const response = await fetch('/api/devices', {
+                    headers: {
+                        'Authorization': `Basic ${authCredentials}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const options = data.devices.map(d => 
+                        `<option value="${d.device_id}">${d.name} (${d.device_id})</option>`
+                    ).join('');
+                    
+                    document.getElementById('test-device-id').innerHTML = 
+                        '<option value="">Select a device...</option>' + options;
+                    document.getElementById('test-device-id-full').innerHTML = 
+                        '<option value="">Select a device...</option>' + options;
+                }
+            } catch (error) {
+                console.error('Error loading devices:', error);
+            }
+        }
+        
+        // Test ESP endpoint
+        async function testESPEndpoint() {
+            const deviceId = document.getElementById('test-device-id').value;
+            const responseDiv = document.getElementById('esp-response');
+            
+            if (!deviceId) {
+                alert('Please select a device');
+                return;
+            }
+            
+            try {
+                responseDiv.style.display = 'block';
+                responseDiv.textContent = 'Loading...';
+                
+                const response = await fetch(`/api/device/${deviceId}/esp`);
+                const data = await response.json();
+                
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseDiv.textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        // Test full endpoint
+        async function testFullEndpoint() {
+            const deviceId = document.getElementById('test-device-id-full').value;
+            const responseDiv = document.getElementById('full-response');
+            
+            if (!deviceId) {
+                alert('Please select a device');
+                return;
+            }
+            
+            const includeWeather = document.getElementById('include-weather').checked;
+            const includeLunar = document.getElementById('include-lunar').checked;
+            const includeSolar = document.getElementById('include-solar').checked;
+            
+            // Build include parameter
+            const includes = [];
+            if (includeWeather) includes.push('weather', 'hourly', 'daily');
+            if (includeLunar) includes.push('lunar');
+            if (includeSolar) includes.push('astronomy');
+            
+            const params = new URLSearchParams();
+            if (includes.length > 0) {
+                params.append('include', includes.join(','));
+            }
+            
+            try {
+                responseDiv.style.display = 'block';
+                responseDiv.textContent = 'Loading...';
+                
+                const url = `/api/device/${deviceId}/data${params.toString() ? '?' + params.toString() : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseDiv.textContent = 'Error: ' + error.message;
+            }
         }
     </script>
 </body>
