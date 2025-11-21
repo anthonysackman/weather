@@ -9,7 +9,7 @@ from app.database.models import User
 from app.auth.utils import hash_password
 
 
-async def create_admin_user(username: str, password: str):
+async def create_admin_user(username: str, password: str, email: str = None):
     """Create an admin user."""
     # Initialize database
     await db.init_db()
@@ -20,11 +20,19 @@ async def create_admin_user(username: str, password: str):
         print(f"❌ User '{username}' already exists!")
         return False
 
+    # Generate email if not provided
+    if not email:
+        email = f"{username}@admin.local"
+
     # Create user
+    now = datetime.utcnow().isoformat()
     user = User(
         username=username,
+        email=email,
         password_hash=hash_password(password),
-        created_at=datetime.utcnow().isoformat(),
+        role='admin',
+        created_at=now,
+        updated_at=now,
     )
 
     created_user = await db.create_user(user)
@@ -33,7 +41,9 @@ async def create_admin_user(username: str, password: str):
         print(f"✅ Admin user '{username}' created successfully!")
         print(f"\nYou can now login at: http://localhost:8000/admin")
         print(f"Username: {username}")
+        print(f"Email: {email}")
         print(f"Password: {password}")
+        print(f"Role: admin")
         return True
     else:
         print(f"❌ Failed to create user '{username}'")
