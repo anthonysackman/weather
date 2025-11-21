@@ -158,6 +158,7 @@
             font-family: 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.5;
+            white-space: pre;
         }
         
         .code-block .comment { color: #6a9955; }
@@ -317,27 +318,109 @@
             <div id="authentication" class="section">
                 <h2>🔐 Authentication</h2>
                 
-                <h3>Device Authentication</h3>
-                <p>ESP32 devices authenticate using their unique <strong>Device ID</strong>. No additional credentials are required for device endpoints.</p>
+                <p>The API supports <strong>two authentication methods</strong> that can be used interchangeably:</p>
                 
-                <div class="info">
-                    <strong>Device ID:</strong> A secure, randomly generated token (e.g., <code>U-rVjpvuyzXZf57Y9fYMxQ</code>) that serves as both identifier and authentication.
-                </div>
-                
-                <h3>Admin Authentication</h3>
-                <p>Admin endpoints require <strong>HTTP Basic Authentication</strong> with username and password.</p>
+                <h3>1. Session Authentication (Basic Auth)</h3>
+                <p>Used by web browsers and the admin panel. Authenticates with username and password.</p>
                 
                 <div class="code-block">Authorization: Basic base64(username:password)</div>
                 
+                <h4>Example:</h4>
+                <div class="code-block">curl -u admin:password http://your-server:8000/api/devices</div>
+                
                 <div class="note">
-                    <strong>Note:</strong> Create admin users using the CLI tool: <code>python create_admin.py username password</code>
+                    <strong>Note:</strong> Create admin users using: <code>python create_admin.py username password</code><br>
+                    Regular users can register at <code>/register</code>
                 </div>
                 
-                <h3>API Key Authentication (Coming Soon)</h3>
-                <div class="placeholder">
-                    <strong>🚧 API Key Authentication - Coming Soon</strong>
-                    <p style="margin-top: 10px; color: #721c24;">This section will be updated with API key authentication details.</p>
+                <h3>2. API Key Authentication (Bearer Token)</h3>
+                <p>Used by ESP32 devices and programmatic access. Authenticates with key_id and key_secret.</p>
+                
+                <div class="code-block">Authorization: Bearer {key_id}:{key_secret}</div>
+                
+                <h4>Example:</h4>
+                <div class="code-block">curl -H "Authorization: Bearer key_abc123:secret_xyz789" \
+     http://your-server:8000/api/device/YOUR_DEVICE_ID/esp</div>
+                
+                <div class="info">
+                    <strong>Getting an API Key:</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li><strong>Users:</strong> Check your dashboard at <code>/dashboard</code> → API Keys tab</li>
+                        <li><strong>Admins:</strong> Generate keys for any user in admin panel → Users tab</li>
+                    </ul>
                 </div>
+                
+                <h3>Authentication by Endpoint</h3>
+                <table class="param-table">
+                    <tr>
+                        <th>Endpoint Type</th>
+                        <th>Session Auth</th>
+                        <th>API Key Auth</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Public Pages</strong> (/docs, /login, /register)</td>
+                        <td>❌ No</td>
+                        <td>❌ No</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Web Pages</strong> (/admin, /dashboard)</td>
+                        <td>✅ Yes</td>
+                        <td>❌ No</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Device Data</strong> (/device/{id}/esp, /device/{id}/data)</td>
+                        <td>✅ Yes</td>
+                        <td>✅ Yes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Device Management</strong> (/devices CRUD)</td>
+                        <td>✅ Yes</td>
+                        <td>✅ Yes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>User Management</strong> (admin only)</td>
+                        <td>✅ Yes</td>
+                        <td>❌ No</td>
+                    </tr>
+                </table>
+                
+                <h3>ESP32 Example Code</h3>
+                <div class="code-block">// Arduino/ESP32 Example
+#include &lt;HTTPClient.h&gt;
+
+const char* API_KEY_ID = "key_abc123";
+const char* API_KEY_SECRET = "secret_xyz789";
+const char* DEVICE_ID = "your-device-id";
+
+void getWeatherData() {
+    HTTPClient http;
+    
+    // Build authorization header
+    String auth = "Bearer " + String(API_KEY_ID) + ":" + String(API_KEY_SECRET);
+    
+    // Make request
+    String url = "http://your-server:8000/api/device/" + String(DEVICE_ID) + "/esp";
+    http.begin(url);
+    http.addHeader("Authorization", auth);
+    
+    int httpCode = http.GET();
+    
+    if (httpCode == 200) {
+        String payload = http.getString();
+        // Parse JSON and display on screen
+    }
+    
+    http.end();
+}</div>
+                
+                <h3>Security Best Practices</h3>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>🔒 <strong>Never commit API keys to version control</strong> - Use environment variables</li>
+                    <li>🔄 <strong>Regenerate keys if compromised</strong> - Use dashboard regenerate feature</li>
+                    <li>🌐 <strong>Use HTTPS in production</strong> - Encrypt all traffic</li>
+                    <li>🔑 <strong>One key per device/app</strong> - Makes revocation easier</li>
+                    <li>👀 <strong>Monitor last_used timestamps</strong> - Detect unauthorized access</li>
+                </ul>
             </div>
             
             <!-- ESP32 Endpoints -->
@@ -350,7 +433,7 @@
                     <div class="endpoint-header">
                         <span class="method get">GET</span>
                         <span class="endpoint-path">/device/{device_id}/esp</span>
-                        <span class="auth-badge public">Public</span>
+                        <span class="auth-badge">Auth Required</span>
                     </div>
                     
                     <p class="description">Returns minimal, flat weather data optimized for ESP32 memory constraints. Perfect for displays with limited RAM.</p>
@@ -371,16 +454,16 @@
                     
                     <h4>Response</h4>
                     <div class="code-block">{
-  <span class="property">"temp"</span>: <span class="number">75.2</span>,           <span class="comment">// Current temperature (°F)</span>
-  <span class="property">"feels"</span>: <span class="number">73.8</span>,         <span class="comment">// Feels like temperature (°F)</span>
-  <span class="property">"humid"</span>: <span class="number">65</span>,           <span class="comment">// Humidity (%)</span>
-  <span class="property">"condition"</span>: <span class="string">"Partly cloudy"</span>, <span class="comment">// Weather description</span>
-  <span class="property">"wind_speed"</span>: <span class="number">8.5</span>,    <span class="comment">// Wind speed (mph)</span>
-  <span class="property">"wind_dir"</span>: <span class="string">"NE"</span>,      <span class="comment">// Wind direction (N, NE, E, etc.)</span>
-  <span class="property">"sunrise"</span>: <span class="string">"06:45"</span>,    <span class="comment">// Sunrise time (HH:MM)</span>
-  <span class="property">"sunset"</span>: <span class="string">"18:30"</span>,     <span class="comment">// Sunset time (HH:MM)</span>
-  <span class="property">"moon_phase"</span>: <span class="string">"Waxing Crescent"</span>, <span class="comment">// Moon phase name</span>
-  <span class="property">"moon_illum"</span>: <span class="number">24</span>      <span class="comment">// Moon illumination (%)</span>
+  "temp": 75.2,           // Current temperature (°F)
+  "feels": 73.8,          // Feels like temperature (°F)
+  "humid": 65,            // Humidity (%)
+  "condition": "Partly cloudy",  // Weather description
+  "wind_speed": 8.5,      // Wind speed (mph)
+  "wind_dir": "NE",       // Wind direction (N, NE, E, etc.)
+  "sunrise": "06:45",     // Sunrise time (HH:MM)
+  "sunset": "18:30",      // Sunset time (HH:MM)
+  "moon_phase": "Waxing Crescent",  // Moon phase name
+  "moon_illum": 24        // Moon illumination (%)
 }</div>
                     
                     <h4>Example Request</h4>
@@ -402,7 +485,7 @@
                     <div class="endpoint-header">
                         <span class="method get">GET</span>
                         <span class="endpoint-path">/device/{device_id}/data</span>
-                        <span class="auth-badge public">Public</span>
+                        <span class="auth-badge">Auth Required</span>
                     </div>
                     
                     <p class="description">Returns comprehensive weather data with optional filtering. Supports hourly forecasts, daily forecasts, lunar data, and astronomy information.</p>
@@ -512,7 +595,7 @@ curl http://your-server:8000/api/device/U-rVjpvuyzXZf57Y9fYMxQ/data?hourly_limit
                     <div class="endpoint-header">
                         <span class="method get">GET</span>
                         <span class="endpoint-path">/device/{device_id}/weather</span>
-                        <span class="auth-badge public">Public</span>
+                        <span class="auth-badge">Auth Required</span>
                     </div>
                     
                     <p class="description">Legacy endpoint that returns full weather data. Equivalent to <code>/device/{device_id}/data</code> with all categories included.</p>

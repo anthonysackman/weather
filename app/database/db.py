@@ -49,6 +49,8 @@ class Database:
                     last_used TEXT,
                     created_at TEXT NOT NULL,
                     expires_at TEXT,
+                    secret_viewed INTEGER DEFAULT 0,
+                    pending_secret TEXT,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             """
@@ -368,8 +370,8 @@ class Database:
                 cursor = await db.execute(
                     """
                     INSERT INTO api_keys (
-                        key_id, key_secret_hash, user_id, name, last_used, created_at, expires_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        key_id, key_secret_hash, user_id, name, last_used, created_at, expires_at, secret_viewed, pending_secret
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         api_key.key_id,
@@ -379,6 +381,8 @@ class Database:
                         api_key.last_used,
                         api_key.created_at,
                         api_key.expires_at,
+                        0,  # secret_viewed = False
+                        api_key.pending_secret,  # Store unhashed secret temporarily
                     ),
                 )
                 await db.commit()
@@ -411,6 +415,8 @@ class Database:
                             last_used=row["last_used"],
                             created_at=row["created_at"],
                             expires_at=row["expires_at"],
+                            secret_viewed=bool(row["secret_viewed"]),
+                            pending_secret=row["pending_secret"] if "pending_secret" in row.keys() else None,
                         )
                     return None
         except Exception as e:
@@ -437,12 +443,48 @@ class Database:
                             last_used=row["last_used"],
                             created_at=row["created_at"],
                             expires_at=row["expires_at"],
+                            secret_viewed=bool(row["secret_viewed"]),
+                            pending_secret=row["pending_secret"] if "pending_secret" in row.keys() else None,
                         )
                         for row in rows
                     ]
         except Exception as e:
             logger.error(f"Failed to get API keys for user {user_id}: {e}")
             return []
+
+    async def mark_api_key_viewed(self, key_id: str) -> bool:
+        """Mark an API key secret as viewed and clear the pending secret."""
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                await db.execute(
+                    "UPDATE api_keys SET secret_viewed = 1, pending_secret = NULL WHERE key_id = ?",
+                    (key_id,)
+                )
+                await db.commit()
+                logger.info(f"Marked API key {key_id} as viewed and cleared pending secret")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to mark API key as viewed: {e}")
+            return False
+
+    async def regenerate_api_key_secret(self, key_id: str, new_secret_hash: str, new_secret: str) -> bool:
+        """Regenerate the secret for an API key."""
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                await db.execute(
+                    """
+                    UPDATE api_keys 
+                    SET key_secret_hash = ?, secret_viewed = 0, pending_secret = ?
+                    WHERE key_id = ?
+                    """,
+                    (new_secret_hash, new_secret, key_id)
+                )
+                await db.commit()
+                logger.info(f"Regenerated secret for API key {key_id}")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to regenerate API key secret: {e}")
+            return False
 
     async def get_all_api_keys(self) -> List[APIKey]:
         """Get all API keys (admin only)."""
@@ -463,6 +505,8 @@ class Database:
                             last_used=row["last_used"],
                             created_at=row["created_at"],
                             expires_at=row["expires_at"],
+                            secret_viewed=bool(row["secret_viewed"]),
+                            pending_secret=row["pending_secret"] if "pending_secret" in row.keys() else None,
                         )
                         for row in rows
                     ]

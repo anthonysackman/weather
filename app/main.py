@@ -3,8 +3,11 @@ from sanic.response import redirect
 from app.api.health import health_bp
 from app.api.datatest import main_bp
 from app.api.devices import devices_bp
-from app.api.admin import admin_bp
+from app.api.admin import admin_bp, pages_bp
+from app.api.admin_api import admin_api_bp
 from app.api.docs import docs_bp
+from app.api.auth import auth_bp
+from app.api.users import users_bp
 from app.database.db import db
 import os
 from dotenv import load_dotenv
@@ -54,7 +57,11 @@ app.blueprint(health_bp)
 app.blueprint(main_bp)
 app.blueprint(devices_bp)
 app.blueprint(admin_bp)
+app.blueprint(admin_api_bp)
+app.blueprint(pages_bp)
 app.blueprint(docs_bp)
+app.blueprint(auth_bp)
+app.blueprint(users_bp)
 
 if __name__ == "__main__":
     import os

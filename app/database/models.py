@@ -47,5 +47,7 @@ class APIKey:
     last_used: Optional[str]
     created_at: str
     expires_at: Optional[str]  # Optional expiration
+    secret_viewed: bool = False  # Whether the user has viewed the secret
+    pending_secret: Optional[str] = None  # Temporary storage of unhashed secret for first view
     id: Optional[int] = None
 

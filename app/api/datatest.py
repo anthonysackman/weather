@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 main_bp = Blueprint("main", url_prefix="/")
 
 
-@main_bp.get("/")
-async def main_page(request: Request):
-    """Serve the main weather interface."""
+@main_bp.get("/test")
+async def test_page(request: Request):
+    """Serve the API test interface (requires login)."""
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
@@ -38,6 +38,18 @@ async def main_page(request: Request):
         </style>
     </head>
     <body>
+        <div style="background: white; padding: 15px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <a href="/dashboard" style="text-decoration: none; color: #667eea; font-size: 24px; font-weight: 700;">⛅ Weather Display</a>
+            </div>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <a href="/dashboard" style="text-decoration: none; color: #666; font-weight: 600;">Dashboard</a>
+                <a href="/test" style="text-decoration: none; color: #667eea; font-weight: 600;">API Test</a>
+                <a href="/docs" style="text-decoration: none; color: #666; font-weight: 600;">Docs</a>
+                <button onclick="logout()" style="background: #dc3545; padding: 8px 16px; border-radius: 20px; color: white; font-weight: 600;">Logout</button>
+            </div>
+        </div>
+        
         <h1>🌤️ Weather Display Control Panel</h1>
         
         <!-- Location Detection -->
@@ -114,6 +126,28 @@ async def main_page(request: Request):
         </div>
 
         <script>
+            // Check authentication
+            function checkAuth() {
+                const authCredentials = localStorage.getItem('auth_credentials');
+                if (!authCredentials) {
+                    window.location.href = '/login';
+                    return false;
+                }
+                return true;
+            }
+            
+            // Logout
+            function logout() {
+                localStorage.removeItem('auth_credentials');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+            }
+            
+            // Check auth on page load
+            if (!checkAuth()) {
+                // Will redirect to login
+            }
+            
             // Helper functions for weather display
             function getWindDirection(degrees) {
                 if (degrees === null || degrees === undefined) return '';

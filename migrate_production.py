@@ -72,6 +72,42 @@ def verify_database():
         return False
 
 
+def run_incremental_migrations(cursor):
+    """Run incremental migrations for existing modern schema."""
+    print("\n🔄 Checking for incremental migrations...")
+    
+    # Get current columns
+    cursor.execute("PRAGMA table_info(api_keys)")
+    api_key_columns = [col[1] for col in cursor.fetchall()]
+    
+    migrations_run = []
+    
+    # Migration 1: Add secret_viewed column
+    if 'secret_viewed' not in api_key_columns:
+        print("   📝 Adding secret_viewed column...")
+        cursor.execute("""
+            ALTER TABLE api_keys 
+            ADD COLUMN secret_viewed INTEGER DEFAULT 1
+        """)
+        migrations_run.append("secret_viewed")
+    
+    # Migration 2: Add pending_secret column
+    if 'pending_secret' not in api_key_columns:
+        print("   📝 Adding pending_secret column...")
+        cursor.execute("""
+            ALTER TABLE api_keys 
+            ADD COLUMN pending_secret TEXT
+        """)
+        migrations_run.append("pending_secret")
+    
+    if migrations_run:
+        print(f"   ✅ Applied incremental migrations: {', '.join(migrations_run)}")
+        return True
+    else:
+        print("   ✅ No incremental migrations needed")
+        return False
+
+
 def run_migration():
     """Run the migration."""
     print("\n🔄 Running migration...")
@@ -82,6 +118,22 @@ def run_migration():
     try:
         # Start transaction
         cursor.execute("BEGIN TRANSACTION")
+        
+        # Check if this is a modern schema that just needs incremental updates
+        cursor.execute("PRAGMA table_info(users)")
+        user_columns = [col[1] for col in cursor.fetchall()]
+        
+        cursor.execute("PRAGMA table_info(api_keys)")
+        api_key_tables = cursor.fetchall()
+        
+        # If email and role exist, and api_keys table exists, do incremental migration
+        if 'email' in user_columns and 'role' in user_columns and api_key_tables:
+            print("   ℹ️  Modern schema detected, running incremental migrations...")
+            run_incremental_migrations(cursor)
+            conn.commit()
+            print("\n✅ Incremental migration completed successfully!")
+            conn.close()
+            return True
         
         # Backup existing data
         print("   📝 Reading existing data...")
@@ -121,6 +173,8 @@ def run_migration():
                 last_used TEXT,
                 created_at TEXT NOT NULL,
                 expires_at TEXT,
+                secret_viewed INTEGER DEFAULT 0,
+                pending_secret TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)

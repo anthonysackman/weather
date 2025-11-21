@@ -357,6 +357,8 @@
             <div class="tabs">
                 <div class="tab-buttons">
                     <button class="tab-button active" onclick="switchTab('devices')">Devices</button>
+                    <button class="tab-button" onclick="switchTab('users')">Users</button>
+                    <button class="tab-button" onclick="switchTab('api-keys')">API Keys</button>
                     <button class="tab-button" onclick="switchTab('api-testing')">API Testing</button>
                 </div>
                 
@@ -504,6 +506,28 @@
                     </div>
                 </div>
                 <!-- End API Testing Tab -->
+                
+                <!-- Users Tab -->
+                <div id="users-tab" class="tab-content">
+                    <div class="api-test-section">
+                        <h3>User Management</h3>
+                        <div id="users-message"></div>
+                        
+                        <div id="users-list"></div>
+                    </div>
+                </div>
+                <!-- End Users Tab -->
+                
+                <!-- API Keys Tab -->
+                <div id="api-keys-tab" class="tab-content">
+                    <div class="api-test-section">
+                        <h3>API Key Management</h3>
+                        <div id="api-keys-message"></div>
+                        
+                        <div id="api-keys-list"></div>
+                    </div>
+                </div>
+                <!-- End API Keys Tab -->
             </div>
         </div>
     </div>
@@ -521,16 +545,25 @@
             // Store credentials
             authCredentials = btoa(`${username}:${password}`);
             
-            // Try to fetch devices to verify credentials
+            // Verify credentials and check if user is admin
             try {
-                const response = await fetch('/api/devices', {
+                const response = await fetch('/api/auth/me', {
                     headers: {
                         'Authorization': `Basic ${authCredentials}`
                     }
                 });
                 
                 if (response.ok) {
-                    // Login successful
+                    const data = await response.json();
+                    
+                    // Check if user is admin
+                    if (data.user.role !== 'admin') {
+                        showAuthMessage('Access denied: Admin privileges required', 'error');
+                        authCredentials = null;
+                        return;
+                    }
+                    
+                    // Login successful and user is admin
                     document.getElementById('auth-section').style.display = 'none';
                     document.getElementById('devices-section').classList.add('active');
                     loadDevices();
@@ -788,9 +821,13 @@
             // Activate button
             event.target.classList.add('active');
             
-            // Load devices into dropdowns when switching to API testing tab
+            // Load data when switching tabs
             if (tabName === 'api-testing') {
                 loadDevicesForTesting();
+            } else if (tabName === 'users') {
+                loadUsers();
+            } else if (tabName === 'api-keys') {
+                loadAPIKeys();
             }
         }
         
@@ -880,6 +917,242 @@
             } catch (error) {
                 responseDiv.textContent = 'Error: ' + error.message;
             }
+        }
+        
+        // ===== USERS TAB FUNCTIONS =====
+        
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load users');
+                }
+                
+                const data = await response.json();
+                displayUsers(data.users);
+            } catch (error) {
+                showUsersMessage('Error loading users: ' + error.message, 'error');
+            }
+        }
+        
+        function displayUsers(users) {
+            const usersList = document.getElementById('users-list');
+            
+            if (users.length === 0) {
+                usersList.innerHTML = '<p style="color: #666;">No users found.</p>';
+                return;
+            }
+            
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="background: #f5f5f5;">';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Username</th>';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Email</th>';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Role</th>';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Created</th>';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Actions</th>';
+            html += '</tr></thead><tbody>';
+            
+            users.forEach(user => {
+                html += '<tr style="border-bottom: 1px solid #eee;">';
+                html += `<td style="padding: 12px;">${escapeHtml(user.username)}</td>`;
+                html += `<td style="padding: 12px;">${escapeHtml(user.email)}</td>`;
+                html += `<td style="padding: 12px;">`;
+                html += `<select onchange="updateUserRole(${user.id}, this.value)" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd;">`;
+                html += `<option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>`;
+                html += `<option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>`;
+                html += `</select>`;
+                html += `</td>`;
+                html += `<td style="padding: 12px;">${new Date(user.created_at).toLocaleDateString()}</td>`;
+                html += `<td style="padding: 12px;">`;
+                html += `<button class="btn" style="padding: 6px 12px; margin-right: 8px;" onclick="generateAPIKeyForUser(${user.id}, '${escapeHtml(user.username)}')">Generate API Key</button>`;
+                html += `<button class="btn btn-danger" style="padding: 6px 12px;" onclick="deleteUser(${user.id}, '${escapeHtml(user.username)}')">Delete</button>`;
+                html += `</td>`;
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            usersList.innerHTML = html;
+        }
+        
+        async function updateUserRole(userId, newRole) {
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/role`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ role: newRole })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showUsersMessage('User role updated successfully', 'success');
+                } else {
+                    showUsersMessage('Error: ' + data.error, 'error');
+                    loadUsers(); // Reload to revert the dropdown
+                }
+            } catch (error) {
+                showUsersMessage('Error updating user role: ' + error.message, 'error');
+                loadUsers(); // Reload to revert the dropdown
+            }
+        }
+        
+        async function deleteUser(userId, username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"? This will also delete all their devices and API keys.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showUsersMessage('User deleted successfully', 'success');
+                    loadUsers();
+                } else {
+                    showUsersMessage('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showUsersMessage('Error deleting user: ' + error.message, 'error');
+            }
+        }
+        
+        async function generateAPIKeyForUser(userId, username) {
+            const keyName = prompt(`Enter a name for the API key for user "${username}":`, `${username}-key`);
+            
+            if (!keyName) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/users/${userId}/api-keys`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: keyName })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`API Key Generated!\n\nKey ID: ${data.key_id}\nKey Secret: ${data.key_secret}\n\nIMPORTANT: Save the secret now - it won't be shown again!`);
+                    showUsersMessage('API key generated successfully', 'success');
+                } else {
+                    showUsersMessage('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showUsersMessage('Error generating API key: ' + error.message, 'error');
+            }
+        }
+        
+        function showUsersMessage(message, type) {
+            const messageDiv = document.getElementById('users-message');
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // ===== API KEYS TAB FUNCTIONS =====
+        
+        async function loadAPIKeys() {
+            try {
+                const response = await fetch('/api/admin/api-keys');
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load API keys');
+                }
+                
+                const data = await response.json();
+                displayAPIKeys(data.keys);
+            } catch (error) {
+                showAPIKeysMessage('Error loading API keys: ' + error.message, 'error');
+            }
+        }
+        
+        function displayAPIKeys(keys) {
+            const keysList = document.getElementById('api-keys-list');
+            
+            if (keys.length === 0) {
+                keysList.innerHTML = '<p style="color: #666;">No API keys found.</p>';
+                return;
+            }
+            
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="background: #f5f5f5;">';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Name</th>';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">User</th>';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Key ID</th>';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Last Used</th>';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Created</th>';
+            html += '<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Actions</th>';
+            html += '</tr></thead><tbody>';
+            
+            keys.forEach(key => {
+                html += '<tr style="border-bottom: 1px solid #eee;">';
+                html += `<td style="padding: 12px;">${escapeHtml(key.name)}</td>`;
+                html += `<td style="padding: 12px;">${escapeHtml(key.username)}</td>`;
+                html += `<td style="padding: 12px;"><code>${escapeHtml(key.key_id)}</code></td>`;
+                html += `<td style="padding: 12px;">${key.last_used ? new Date(key.last_used).toLocaleString() : 'Never'}</td>`;
+                html += `<td style="padding: 12px;">${new Date(key.created_at).toLocaleDateString()}</td>`;
+                html += `<td style="padding: 12px;">`;
+                html += `<button class="btn btn-danger" style="padding: 6px 12px;" onclick="deleteAPIKey('${escapeHtml(key.key_id)}', '${escapeHtml(key.name)}')">Revoke</button>`;
+                html += `</td>`;
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            keysList.innerHTML = html;
+        }
+        
+        async function deleteAPIKey(keyId, keyName) {
+            if (!confirm(`Are you sure you want to revoke the API key "${keyName}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/api-keys/${keyId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAPIKeysMessage('API key revoked successfully', 'success');
+                    loadAPIKeys();
+                } else {
+                    showAPIKeysMessage('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAPIKeysMessage('Error revoking API key: ' + error.message, 'error');
+            }
+        }
+        
+        function showAPIKeysMessage(message, type) {
+            const messageDiv = document.getElementById('api-keys-message');
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     </script>
 </body>
