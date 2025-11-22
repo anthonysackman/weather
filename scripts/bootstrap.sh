@@ -11,6 +11,7 @@ REPO_DIR="/srv/weather"
 ENV_FILE="${CONFIG_DIR}/.env"
 NGINX_SITE="/etc/nginx/sites-available/weather"
 NGINX_LINK="/etc/nginx/sites-enabled/weather"
+VENV_DIR="${REPO_DIR}/.venv"
 
 ASTRONOMY_API_ID=""
 ASTRONOMY_API_SECRET=""
@@ -153,13 +154,22 @@ function setup_repo() {
 }
 
 function install_python_dependencies() {
-  log "Installing Python dependencies"
+  log "Installing Python dependencies inside virtualenv"
+  ensure_package python3-venv
+
+  VENV_DIR="${REPO_DIR}/.venv"
+  if [[ ! -d "$VENV_DIR" ]]; then
+    log "Creating virtualenv at ${VENV_DIR}"
+    python3 -m venv "$VENV_DIR"
+  fi
+
+  PIP_BIN="${VENV_DIR}/bin/pip"
 
   log "Ensuring pip is up to date"
-  python3 -m pip install --upgrade pip setuptools wheel
+  "$PIP_BIN" install --upgrade pip setuptools wheel
 
   if [[ -f "${REPO_DIR}/requirements.txt" ]]; then
-    python3 -m pip install -r "${REPO_DIR}/requirements.txt"
+    "$PIP_BIN" install -r "${REPO_DIR}/requirements.txt"
   else
     log "No requirements.txt found in ${REPO_DIR}"
   fi
@@ -178,7 +188,11 @@ function run_create_admin() {
   fi
 
   log "Running create_admin.py"
-  python3 "${REPO_DIR}/create_admin.py" "$admin_user" "$admin_password"
+  local python_bin="${VENV_DIR}/bin/python"
+  if [[ ! -x "$python_bin" ]]; then
+    python_bin="python3"
+  fi
+  "$python_bin" "${REPO_DIR}/create_admin.py" "$admin_user" "$admin_password"
 }
 
 function setup_nginx() {
