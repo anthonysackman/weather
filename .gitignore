@@ -27,6 +27,7 @@ env/
 
 # Environment Variables
 .env
+secrets.env
 
 # Database
 *.db
