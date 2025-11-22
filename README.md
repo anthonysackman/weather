@@ -2,6 +2,8 @@
 
 A comprehensive weather API designed for ESP32 weather displays with device management, authentication, and address-based configuration.
 
+<!-- Workflow test: will trigger GitHub Actions deploy when pushed -->
+
 ## Features
 
 - 🌤️ **Comprehensive Weather Data** - Current conditions, hourly/daily forecasts, moon phase
