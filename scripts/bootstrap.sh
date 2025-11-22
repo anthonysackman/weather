@@ -192,7 +192,6 @@ function main() {
   ensure_package git
   ensure_package curl
   ensure_package docker.io
-  ensure_package docker-compose-plugin
   ensure_package nginx
 
   systemctl enable --now docker
