@@ -1,5 +1,44 @@
 # Deployment Guide
 
+## Assumptions
+
+- Ubuntu 24.04 droplet.
+- `/srv/weather` holds the checked-out repo.
+- `/etc/weather/.env` stores secrets.
+- Bootstrap script has been run at least once (`scripts/bootstrap.sh`).
+
+## Step 0: Update Secrets if Needed
+
+1. `sudo vim /etc/weather/.env` (or `cat <<'EOF' > /etc/weather/.env ...` via CI).
+2. Ensure permissions remain `600`.
+
+## Step 1: Pull latest code and rebuild
+
+```bash
+sudo scripts/deploy.sh
+```
+
+This script:
+
+- Pulls the latest git commit from `main`.
+- Builds the Docker image.
+- Stops the old container and starts a new one with `--env-file /etc/weather/.env`.
+- Binds `/etc/weather/weather_display.db` into the container.
+
+## Step 2: Optional migrations
+
+If a migration script is needed, run it inside the venv before `deploy.sh` or extend the script.
+
+## Integrating with GitHub Actions
+
+1. Add secrets: `DO_HOST`, `DO_USER`, `SSH_PRIVATE_KEY`, `SSH_PORT` (if non-standard).
+2. Workflow steps:
+   - SSH into the droplet.
+   - Copy updated `.env` (if changes exist).
+   - Run `cd /srv/weather && sudo scripts/deploy.sh`.
+3. Include `ssh-keyscan github.com >> /root/.ssh/known_hosts` to avoid prompts.
+# Deployment Guide
+
 ## Automatic Migrations on Startup
 
 The application now automatically runs database migrations on startup. This means:
