@@ -110,6 +110,18 @@ function write_env_file() {
   rm -f "$temp"
 }
 
+function ensure_db_file() {
+  log "Ensuring SQLite file at ${DB_PATH:-${CONFIG_DIR}/weather_display.db}"
+  local db_file="${DB_PATH:-${CONFIG_DIR}/weather_display.db}"
+  mkdir -p "$(dirname "$db_file")"
+  if [[ ! -f "$db_file" ]]; then
+    touch "$db_file"
+  fi
+  chown root:root "$db_file"
+  chmod 660 "$db_file"
+  DB_PATH="$db_file"
+}
+
 function gather_secrets() {
   log "Collecting secrets for .env"
   export ASTRONOMY_API_ID
@@ -175,6 +187,17 @@ function install_python_dependencies() {
   fi
 }
 
+function ensure_shared_db() {
+  local db_file="${DB_PATH:-${CONFIG_DIR}/weather_display.db}"
+  mkdir -p "$(dirname "$db_file")"
+  if [[ ! -f "$db_file" ]]; then
+    touch "$db_file"
+  fi
+  chown root:root "$db_file"
+  chmod 660 "$db_file"
+  DB_PATH="$db_file"
+}
+
 function run_create_admin() {
   if ! confirm "Would you like to run create_admin.py now?"; then
     return
@@ -237,6 +260,7 @@ function main() {
   ensure_dir "$REPO_DIR"
 
   gather_secrets
+  ensure_shared_db
   write_env_file
 
   setup_repo

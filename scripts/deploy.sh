@@ -49,6 +49,14 @@ function ensure_env() {
   fi
 }
 
+function ensure_db_file() {
+  mkdir -p "$(dirname "$DB_FILE")"
+  if [[ ! -f "$DB_FILE" ]]; then
+    touch "$DB_FILE"
+  fi
+  chmod 660 "$DB_FILE"
+}
+
 function run_container() {
   log "Starting container with env file"
   mkdir -p "$(dirname "$DB_FILE")"
@@ -75,6 +83,7 @@ function main() {
   require_root
   ensure_repo
   ensure_env
+  ensure_db_file
   update_code
   build_image
   stop_container
