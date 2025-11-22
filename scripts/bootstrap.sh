@@ -12,6 +12,11 @@ ENV_FILE="${CONFIG_DIR}/.env"
 NGINX_SITE="/etc/nginx/sites-available/weather"
 NGINX_LINK="/etc/nginx/sites-enabled/weather"
 
+ASTRONOMY_API_ID=""
+ASTRONOMY_API_SECRET=""
+DB_PATH=""
+PORT=""
+
 function log() {
   echo "[bootstrap] $*"
 }
@@ -57,7 +62,7 @@ function ensure_dir() {
 function prompt_env_value() {
   local key="$1"
   local default="${2:-}"
-  local current
+  local current=""
   if [[ -f "$ENV_FILE" ]]; then
     current=$(grep -E "^${key}=" "$ENV_FILE" || true)
     current="${current#${key}=}"
