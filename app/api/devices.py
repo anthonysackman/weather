@@ -5,6 +5,7 @@ from sanic.response import json
 from sanic.request import Request
 from sanic.log import logger
 from app.auth.middleware import require_auth
+from app.auth.flexible_auth import require_auth as flexible_auth
 from app.database.db import db
 from app.database.models import Device
 from app.services.address_client import AddressClient
@@ -24,9 +25,9 @@ async def log_request(request):
 
 # Admin endpoints (require authentication)
 @devices_bp.get("/devices")
-@require_auth
+@flexible_auth()
 async def list_devices(request: Request):
-    """List all devices (admin only)."""
+    """List all devices (authenticated users see their own, admins see all)."""
     devices = await db.get_all_devices()
 
     return json(
@@ -51,10 +52,12 @@ async def list_devices(request: Request):
 
 
 @devices_bp.post("/devices")
-@require_auth
+@flexible_auth()
 async def create_device(request: Request):
-    """Create a new device (admin only)."""
+    """Create a new device (all authenticated users can create)."""
     try:
+        user = request.ctx.user  # Get authenticated user
+        
         data = request.json
         name = data.get("name")
         address = data.get("address")
@@ -81,9 +84,10 @@ async def create_device(request: Request):
         lat, lon, _, formatted_address = geocode_result
         final_timezone = timezone
 
-        # Create device
+        # Create device (assign to current user)
         device = Device(
             device_id=device_id,
+            user_id=user.id,  # Assign to authenticated user
             name=name,
             address=formatted_address,
             lat=lat,
@@ -150,9 +154,9 @@ async def get_device(request: Request, device_id: str):
 
 
 @devices_bp.put("/devices/<device_id>")
-@require_auth
+@flexible_auth()
 async def update_device(request: Request, device_id: str):
-    """Update device (admin only)."""
+    """Update device (users can update their own, admins can update any)."""
     try:
         data = request.json
         import sys
@@ -224,13 +228,27 @@ async def update_device(request: Request, device_id: str):
 
 
 @devices_bp.delete("/devices/<device_id>")
-@require_auth
+@flexible_auth()
 async def delete_device(request: Request, device_id: str):
-    """Delete device (admin only)."""
+    """Delete device (users can delete their own, admins can delete any)."""
+    user = request.ctx.user
+    
+    # Get device to check ownership
+    device = await db.get_device(device_id)
+    if not device:
+        return json({"success": False, "error": "Device not found"}, status=404)
+    
+    # Check if user owns the device or is admin
+    if device.user_id != user.id and user.role != 'admin':
+        return json(
+            {"success": False, "error": "Unauthorized - you can only delete your own devices"},
+            status=403
+        )
+    
     success = await db.delete_device(device_id)
 
     if not success:
-        return json({"success": False, "error": "Device not found"}, status=404)
+        return json({"success": False, "error": "Failed to delete device"}, status=500)
 
     return json({"success": True, "message": "Device deleted"})
 
@@ -320,10 +338,18 @@ async def get_device_weather(request: Request, device_id: str):
 
 
 @devices_bp.get("/device/<device_id>/data")
+@flexible_auth()  # Accept both session and API key auth
 async def get_device_data(request: Request, device_id: str):
     """Get flexible filtered data for a device (web apps, testing)."""
     # Get device configuration
     device = await db.get_device(device_id)
+    
+    # Check if user owns this device (or is admin)
+    if request.ctx.user.id != device.user_id and request.ctx.user.role != 'admin':
+        return json(
+            {"success": False, "error": "Unauthorized - you don't own this device"},
+            status=403
+        )
 
     if not device:
         return json({"success": False, "error": "Device not found"}, status=404)
@@ -440,10 +466,18 @@ async def get_device_data(request: Request, device_id: str):
 
 
 @devices_bp.get("/device/<device_id>/esp")
+@flexible_auth()  # Accept both session and API key auth
 async def get_device_esp(request: Request, device_id: str):
     """Get minimal optimized data for ESP32 (memory-conscious)."""
     # Get device configuration
     device = await db.get_device(device_id)
+    
+    # Check if user owns this device (or is admin)
+    if request.ctx.user.id != device.user_id and request.ctx.user.role != 'admin':
+        return json(
+            {"success": False, "error": "Unauthorized - you don't own this device"},
+            status=403
+        )
 
     if not device:
         return json({"success": False, "error": "Device not found"}, status=404)

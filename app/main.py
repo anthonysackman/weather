@@ -3,8 +3,13 @@ from sanic.response import redirect
 from app.api.health import health_bp
 from app.api.datatest import main_bp
 from app.api.devices import devices_bp
-from app.api.admin import admin_bp
+from app.api.admin import admin_bp, pages_bp
+from app.api.admin_api import admin_api_bp
+from app.api.docs import docs_bp
+from app.api.auth import auth_bp
+from app.api.users import users_bp
 from app.database.db import db
+from app.database.migrations import run_migrations
 import os
 from dotenv import load_dotenv
 import logging
@@ -31,7 +36,7 @@ app.static("/static", "./app/static")
 # Initialize database on startup
 @app.before_server_start
 async def init_database(app, loop):
-    """Initialize database before server starts."""
+    """Initialize database and run migrations before server starts."""
     # Reconfigure logging in worker process
     import sys
     logging.basicConfig(
@@ -44,6 +49,11 @@ async def init_database(app, loop):
         force=True  # Override existing config
     )
     
+    # Run migrations first (before init_db creates tables)
+    db_path = os.environ.get("DB_PATH", "./weather_display.db")
+    run_migrations(db_path)
+    
+    # Initialize database (creates tables if they don't exist)
     await db.init_db()
     logging.info("Database initialized")
 
@@ -53,6 +63,11 @@ app.blueprint(health_bp)
 app.blueprint(main_bp)
 app.blueprint(devices_bp)
 app.blueprint(admin_bp)
+app.blueprint(admin_api_bp)
+app.blueprint(pages_bp)
+app.blueprint(docs_bp)
+app.blueprint(auth_bp)
+app.blueprint(users_bp)
 
 if __name__ == "__main__":
     import os

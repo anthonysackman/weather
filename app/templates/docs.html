@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Display API Documentation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 42px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .nav {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            border-bottom: 2px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 25px;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        
+        .nav a:hover {
+            color: #764ba2;
+        }
+        
+        .section {
+            margin-bottom: 50px;
+        }
+        
+        .section h2 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .section h3 {
+            color: #555;
+            font-size: 24px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        
+        .section h4 {
+            color: #667eea;
+            font-size: 20px;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        
+        .endpoint {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+        
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .method {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 14px;
+            margin-right: 15px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .method.get { background: #28a745; color: white; }
+        .method.post { background: #007bff; color: white; }
+        .method.put { background: #ffc107; color: #333; }
+        .method.delete { background: #dc3545; color: white; }
+        
+        .endpoint-path {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .auth-badge {
+            display: inline-block;
+            background: #ff6b6b;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .auth-badge.public {
+            background: #51cf66;
+        }
+        
+        .description {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre;
+        }
+        
+        .code-block .comment { color: #6a9955; }
+        .code-block .string { color: #ce9178; }
+        .code-block .number { color: #b5cea8; }
+        .code-block .keyword { color: #569cd6; }
+        .code-block .property { color: #9cdcfe; }
+        
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        .param-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .param-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .param-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .param-name {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .param-type {
+            font-family: 'Courier New', monospace;
+            color: #999;
+            font-size: 13px;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .note strong {
+            color: #856404;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .info strong {
+            color: #0c5460;
+        }
+        
+        .placeholder {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .placeholder strong {
+            color: #721c24;
+            font-size: 18px;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+            font-size: 14px;
+        }
+        
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+        }
+        
+        .back-to-top:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⛅ Weather Display API</h1>
+            <p>Complete API documentation for ESP32 weather displays</p>
+        </div>
+        
+        <div class="nav">
+            <a href="#overview">Overview</a>
+            <a href="#authentication">Authentication</a>
+            <a href="#esp32-endpoints">ESP32 Endpoints</a>
+            <a href="#data-endpoints">Data Endpoints</a>
+            <a href="#admin-endpoints">Admin Endpoints</a>
+            <a href="#errors">Error Handling</a>
+            <a href="/admin">Admin Panel</a>
+        </div>
+        
+        <div class="content">
+            <!-- Overview -->
+            <div id="overview" class="section">
+                <h2>📖 Overview</h2>
+                <p>The Weather Display API provides comprehensive weather data designed specifically for ESP32 weather displays. It features device management, address-based configuration, and optimized endpoints for memory-constrained devices.</p>
+                
+                <h3>Base URL</h3>
+                <div class="code-block">http://your-server:8000/api</div>
+                
+                <h3>Features</h3>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>🌤️ Current weather conditions and forecasts</li>
+                    <li>🌙 Moon phase and lunar data</li>
+                    <li>🌅 Sunrise and sunset times</li>
+                    <li>📍 Address-based device configuration</li>
+                    <li>🔐 Secure device and admin management</li>
+                    <li>💾 Memory-optimized ESP32 endpoints</li>
+                </ul>
+                
+                <h3>Data Sources</h3>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li><strong>Open-Meteo</strong> - Weather data and forecasts</li>
+                    <li><strong>AstronomyAPI</strong> - Moon phase calculations</li>
+                    <li><strong>OpenStreetMap Nominatim</strong> - Address geocoding</li>
+                </ul>
+            </div>
+            
+            <!-- Authentication -->
+            <div id="authentication" class="section">
+                <h2>🔐 Authentication</h2>
+                
+                <p>The API supports <strong>two authentication methods</strong> that can be used interchangeably:</p>
+                
+                <h3>1. Session Authentication (Basic Auth)</h3>
+                <p>Used by web browsers and the admin panel. Authenticates with username and password.</p>
+                
+                <div class="code-block">Authorization: Basic base64(username:password)</div>
+                
+                <h4>Example:</h4>
+                <div class="code-block">curl -u admin:password http://your-server:8000/api/devices</div>
+                
+                <div class="note">
+                    <strong>Note:</strong> Create admin users using: <code>python create_admin.py username password</code><br>
+                    Regular users can register at <code>/register</code>
+                </div>
+                
+                <h3>2. API Key Authentication (Bearer Token)</h3>
+                <p>Used by ESP32 devices and programmatic access. Authenticates with key_id and key_secret.</p>
+                
+                <div class="code-block">Authorization: Bearer {key_id}:{key_secret}</div>
+                
+                <h4>Example:</h4>
+                <div class="code-block">curl -H "Authorization: Bearer key_abc123:secret_xyz789" \
+     http://your-server:8000/api/device/YOUR_DEVICE_ID/esp</div>
+                
+                <div class="info">
+                    <strong>Getting an API Key:</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li><strong>Users:</strong> Check your dashboard at <code>/dashboard</code> → API Keys tab</li>
+                        <li><strong>Admins:</strong> Generate keys for any user in admin panel → Users tab</li>
+                    </ul>
+                </div>
+                
+                <h3>Authentication by Endpoint</h3>
+                <table class="param-table">
+                    <tr>
+                        <th>Endpoint Type</th>
+                        <th>Session Auth</th>
+                        <th>API Key Auth</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Public Pages</strong> (/docs, /login, /register)</td>
+                        <td>❌ No</td>
+                        <td>❌ No</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Web Pages</strong> (/admin, /dashboard)</td>
+                        <td>✅ Yes</td>
+                        <td>❌ No</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Device Data</strong> (/device/{id}/esp, /device/{id}/data)</td>
+                        <td>✅ Yes</td>
+                        <td>✅ Yes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Device Management</strong> (/devices CRUD)</td>
+                        <td>✅ Yes</td>
+                        <td>✅ Yes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>User Management</strong> (admin only)</td>
+                        <td>✅ Yes</td>
+                        <td>❌ No</td>
+                    </tr>
+                </table>
+                
+                <h3>ESP32 Example Code</h3>
+                <div class="code-block">// Arduino/ESP32 Example
+#include &lt;HTTPClient.h&gt;
+
+const char* API_KEY_ID = "key_abc123";
+const char* API_KEY_SECRET = "secret_xyz789";
+const char* DEVICE_ID = "your-device-id";
+
+void getWeatherData() {
+    HTTPClient http;
+    
+    // Build authorization header
+    String auth = "Bearer " + String(API_KEY_ID) + ":" + String(API_KEY_SECRET);
+    
+    // Make request
+    String url = "http://your-server:8000/api/device/" + String(DEVICE_ID) + "/esp";
+    http.begin(url);
+    http.addHeader("Authorization", auth);
+    
+    int httpCode = http.GET();
+    
+    if (httpCode == 200) {
+        String payload = http.getString();
+        // Parse JSON and display on screen
+    }
+    
+    http.end();
+}</div>
+                
+                <h3>Security Best Practices</h3>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>🔒 <strong>Never commit API keys to version control</strong> - Use environment variables</li>
+                    <li>🔄 <strong>Regenerate keys if compromised</strong> - Use dashboard regenerate feature</li>
+                    <li>🌐 <strong>Use HTTPS in production</strong> - Encrypt all traffic</li>
+                    <li>🔑 <strong>One key per device/app</strong> - Makes revocation easier</li>
+                    <li>👀 <strong>Monitor last_used timestamps</strong> - Detect unauthorized access</li>
+                </ul>
+            </div>
+            
+            <!-- ESP32 Endpoints -->
+            <div id="esp32-endpoints" class="section">
+                <h2>🔌 ESP32 Endpoints</h2>
+                <p>Optimized endpoints for memory-constrained ESP32 devices with minimal response sizes.</p>
+                
+                <!-- ESP Weather Endpoint -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-path">/device/{device_id}/esp</span>
+                        <span class="auth-badge">Auth Required</span>
+                    </div>
+                    
+                    <p class="description">Returns minimal, flat weather data optimized for ESP32 memory constraints. Perfect for displays with limited RAM.</p>
+                    
+                    <h4>Path Parameters</h4>
+                    <table class="param-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">device_id</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Unique device identifier</td>
+                        </tr>
+                    </table>
+                    
+                    <h4>Response</h4>
+                    <div class="code-block">{
+  "temp": 75.2,           // Current temperature (°F)
+  "feels": 73.8,          // Feels like temperature (°F)
+  "humid": 65,            // Humidity (%)
+  "condition": "Partly cloudy",  // Weather description
+  "wind_speed": 8.5,      // Wind speed (mph)
+  "wind_dir": "NE",       // Wind direction (N, NE, E, etc.)
+  "sunrise": "06:45",     // Sunrise time (HH:MM)
+  "sunset": "18:30",      // Sunset time (HH:MM)
+  "moon_phase": "Waxing Crescent",  // Moon phase name
+  "moon_illum": 24        // Moon illumination (%)
+}</div>
+                    
+                    <h4>Example Request</h4>
+                    <div class="code-block">curl http://your-server:8000/api/device/U-rVjpvuyzXZf57Y9fYMxQ/esp</div>
+                    
+                    <div class="info">
+                        <strong>Memory Optimized:</strong> This endpoint returns a flat structure with short property names to minimize memory usage on ESP32 devices.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Data Endpoints -->
+            <div id="data-endpoints" class="section">
+                <h2>📊 Data Endpoints</h2>
+                <p>Comprehensive weather data endpoints with filtering options for web applications and advanced integrations.</p>
+                
+                <!-- Full Weather Data -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-path">/device/{device_id}/data</span>
+                        <span class="auth-badge">Auth Required</span>
+                    </div>
+                    
+                    <p class="description">Returns comprehensive weather data with optional filtering. Supports hourly forecasts, daily forecasts, lunar data, and astronomy information.</p>
+                    
+                    <h4>Path Parameters</h4>
+                    <table class="param-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">device_id</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Unique device identifier</td>
+                        </tr>
+                    </table>
+                    
+                    <h4>Query Parameters</h4>
+                    <table class="param-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Default</th>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">include</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Comma-separated list: <code>weather,hourly,daily,lunar,astronomy</code></td>
+                            <td>all</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">exclude</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Comma-separated list of categories to exclude</td>
+                            <td>none</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">hourly_limit</span></td>
+                            <td><span class="param-type">integer</span></td>
+                            <td>Number of hourly forecast entries (max 168)</td>
+                            <td>168</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">daily_limit</span></td>
+                            <td><span class="param-type">integer</span></td>
+                            <td>Number of daily forecast entries (max 7)</td>
+                            <td>7</td>
+                        </tr>
+                    </table>
+                    
+                    <h4>Response</h4>
+                    <div class="code-block">{
+  <span class="property">"success"</span>: <span class="keyword">true</span>,
+  <span class="property">"device"</span>: {
+    <span class="property">"device_id"</span>: <span class="string">"U-rVjpvuyzXZf57Y9fYMxQ"</span>,
+    <span class="property">"name"</span>: <span class="string">"Living Room Display"</span>,
+    <span class="property">"address"</span>: <span class="string">"123 Main St, Miami, FL"</span>
+  },
+  <span class="property">"data"</span>: {
+    <span class="property">"weather"</span>: {
+      <span class="property">"temperature"</span>: <span class="number">75.2</span>,
+      <span class="property">"feels_like"</span>: <span class="number">73.8</span>,
+      <span class="property">"humidity"</span>: <span class="number">65</span>,
+      <span class="property">"weather_description"</span>: <span class="string">"Partly cloudy"</span>,
+      <span class="property">"windspeed"</span>: <span class="number">8.5</span>,
+      <span class="property">"winddirection"</span>: <span class="number">45</span>,
+      <span class="property">"pressure"</span>: <span class="number">1013.2</span>,
+      <span class="property">"visibility"</span>: <span class="number">10000</span>,
+      <span class="property">"uv_index"</span>: <span class="number">5</span>,
+      <span class="property">"cloud_cover"</span>: <span class="number">40</span>,
+      <span class="property">"precipitation"</span>: <span class="number">0</span>
+    },
+    <span class="property">"hourly_forecast"</span>: [...],
+    <span class="property">"daily_forecast"</span>: [...],
+    <span class="property">"astronomy"</span>: {
+      <span class="property">"sunrise"</span>: <span class="string">"2024-01-15T06:45:00"</span>,
+      <span class="property">"sunset"</span>: <span class="string">"2024-01-15T18:30:00"</span>
+    },
+    <span class="property">"lunar"</span>: {
+      <span class="property">"phase"</span>: <span class="string">"Waxing Crescent"</span>,
+      <span class="property">"illumination"</span>: <span class="number">23.5</span>,
+      <span class="property">"age"</span>: <span class="number">3.2</span>,
+      <span class="property">"distance"</span>: <span class="number">384400</span>,
+      <span class="property">"angular_diameter"</span>: <span class="number">0.52</span>
+    }
+  }
+}</div>
+                    
+                    <h4>Example Requests</h4>
+                    <div class="code-block"><span class="comment"># Get all data</span>
+curl http://your-server:8000/api/device/U-rVjpvuyzXZf57Y9fYMxQ/data
+
+<span class="comment"># Get only weather and lunar data</span>
+curl http://your-server:8000/api/device/U-rVjpvuyzXZf57Y9fYMxQ/data?include=weather,lunar
+
+<span class="comment"># Get everything except hourly forecast</span>
+curl http://your-server:8000/api/device/U-rVjpvuyzXZf57Y9fYMxQ/data?exclude=hourly
+
+<span class="comment"># Get 24 hours of forecast</span>
+curl http://your-server:8000/api/device/U-rVjpvuyzXZf57Y9fYMxQ/data?hourly_limit=24</div>
+                </div>
+                
+                <!-- Legacy Weather Endpoint -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-path">/device/{device_id}/weather</span>
+                        <span class="auth-badge">Auth Required</span>
+                    </div>
+                    
+                    <p class="description">Legacy endpoint that returns full weather data. Equivalent to <code>/device/{device_id}/data</code> with all categories included.</p>
+                    
+                    <div class="note">
+                        <strong>Deprecated:</strong> Use <code>/device/{device_id}/data</code> for new integrations. This endpoint is maintained for backward compatibility.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Admin Endpoints -->
+            <div id="admin-endpoints" class="section">
+                <h2>🔧 Admin Endpoints</h2>
+                <p>Device management endpoints for administrators. All endpoints require Basic Authentication.</p>
+                
+                <!-- List Devices -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-path">/devices</span>
+                        <span class="auth-badge">Admin Auth Required</span>
+                    </div>
+                    
+                    <p class="description">List all registered devices with their configuration and status.</p>
+                    
+                    <h4>Headers</h4>
+                    <div class="code-block">Authorization: Basic base64(username:password)</div>
+                    
+                    <h4>Response</h4>
+                    <div class="code-block">{
+  <span class="property">"success"</span>: <span class="keyword">true</span>,
+  <span class="property">"devices"</span>: [
+    {
+      <span class="property">"device_id"</span>: <span class="string">"U-rVjpvuyzXZf57Y9fYMxQ"</span>,
+      <span class="property">"name"</span>: <span class="string">"Living Room Display"</span>,
+      <span class="property">"address"</span>: <span class="string">"123 Main St, Miami, FL"</span>,
+      <span class="property">"lat"</span>: <span class="number">25.7617</span>,
+      <span class="property">"lon"</span>: <span class="number">-80.1918</span>,
+      <span class="property">"timezone"</span>: <span class="string">"America/New_York"</span>,
+      <span class="property">"last_seen"</span>: <span class="string">"2024-01-15T10:30:00"</span>,
+      <span class="property">"created_at"</span>: <span class="string">"2024-01-01T12:00:00"</span>,
+      <span class="property">"updated_at"</span>: <span class="string">"2024-01-15T09:00:00"</span>
+    }
+  ]
+}</div>
+                </div>
+                
+                <!-- Create Device -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method post">POST</span>
+                        <span class="endpoint-path">/devices</span>
+                        <span class="auth-badge">Admin Auth Required</span>
+                    </div>
+                    
+                    <p class="description">Create a new device. The system automatically geocodes the address to coordinates and determines the timezone.</p>
+                    
+                    <h4>Headers</h4>
+                    <div class="code-block">Authorization: Basic base64(username:password)
+Content-Type: application/json</div>
+                    
+                    <h4>Request Body</h4>
+                    <table class="param-table">
+                        <tr>
+                            <th>Field</th>
+                            <th>Type</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">name</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>✅ Yes</td>
+                            <td>Device display name</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">address</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>✅ Yes</td>
+                            <td>Full street address</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">timezone</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>✅ Yes</td>
+                            <td>IANA timezone (e.g., "America/New_York")</td>
+                        </tr>
+                    </table>
+                    
+                    <h4>Example Request</h4>
+                    <div class="code-block">curl -X POST http://your-server:8000/api/devices \
+  -H "Authorization: Basic YWRtaW46cGFzc3dvcmQ=" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Living Room Display",
+    "address": "123 Main St, Miami, FL 33101",
+    "timezone": "America/New_York"
+  }'</div>
+                    
+                    <h4>Response</h4>
+                    <div class="code-block">{
+  <span class="property">"success"</span>: <span class="keyword">true</span>,
+  <span class="property">"device_id"</span>: <span class="string">"U-rVjpvuyzXZf57Y9fYMxQ"</span>,
+  <span class="property">"message"</span>: <span class="string">"Device created successfully"</span>
+}</div>
+                </div>
+                
+                <!-- Get Device -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-path">/devices/{device_id}</span>
+                        <span class="auth-badge">Admin Auth Required</span>
+                    </div>
+                    
+                    <p class="description">Get detailed information about a specific device.</p>
+                    
+                    <h4>Path Parameters</h4>
+                    <table class="param-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">device_id</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Unique device identifier</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- Update Device -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method put">PUT</span>
+                        <span class="endpoint-path">/devices/{device_id}</span>
+                        <span class="auth-badge">Admin Auth Required</span>
+                    </div>
+                    
+                    <p class="description">Update device configuration. If the address changes, it will be automatically re-geocoded.</p>
+                    
+                    <h4>Request Body</h4>
+                    <table class="param-table">
+                        <tr>
+                            <th>Field</th>
+                            <th>Type</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">name</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>No</td>
+                            <td>New device name</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">address</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>No</td>
+                            <td>New address (will trigger re-geocoding)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">timezone</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>✅ Yes</td>
+                            <td>IANA timezone</td>
+                        </tr>
+                    </table>
+                    
+                    <h4>Example Request</h4>
+                    <div class="code-block">curl -X PUT http://your-server:8000/api/devices/U-rVjpvuyzXZf57Y9fYMxQ \
+  -H "Authorization: Basic YWRtaW46cGFzc3dvcmQ=" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Bedroom Display",
+    "timezone": "America/Los_Angeles"
+  }'</div>
+                </div>
+                
+                <!-- Delete Device -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method delete">DELETE</span>
+                        <span class="endpoint-path">/devices/{device_id}</span>
+                        <span class="auth-badge">Admin Auth Required</span>
+                    </div>
+                    
+                    <p class="description">Permanently delete a device and all its configuration.</p>
+                    
+                    <h4>Path Parameters</h4>
+                    <table class="param-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td><span class="param-name">device_id</span></td>
+                            <td><span class="param-type">string</span></td>
+                            <td>Unique device identifier</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="note">
+                        <strong>Warning:</strong> This action cannot be undone. The device will need to be re-registered to access weather data again.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Error Handling -->
+            <div id="errors" class="section">
+                <h2>⚠️ Error Handling</h2>
+                <p>The API uses standard HTTP status codes and returns consistent error responses.</p>
+                
+                <h3>HTTP Status Codes</h3>
+                <table class="param-table">
+                    <tr>
+                        <th>Code</th>
+                        <th>Description</th>
+                    </tr>
+                    <tr>
+                        <td><strong>200</strong></td>
+                        <td>Success - Request completed successfully</td>
+                    </tr>
+                    <tr>
+                        <td><strong>400</strong></td>
+                        <td>Bad Request - Invalid parameters or missing required fields</td>
+                    </tr>
+                    <tr>
+                        <td><strong>401</strong></td>
+                        <td>Unauthorized - Invalid or missing authentication credentials</td>
+                    </tr>
+                    <tr>
+                        <td><strong>404</strong></td>
+                        <td>Not Found - Device or resource does not exist</td>
+                    </tr>
+                    <tr>
+                        <td><strong>500</strong></td>
+                        <td>Internal Server Error - Server-side error occurred</td>
+                    </tr>
+                </table>
+                
+                <h3>Error Response Format</h3>
+                <div class="code-block">{
+  <span class="property">"success"</span>: <span class="keyword">false</span>,
+  <span class="property">"error"</span>: <span class="string">"Device not found"</span>
+}</div>
+                
+                <h3>Common Errors</h3>
+                <div class="endpoint">
+                    <h4>Device Not Found</h4>
+                    <div class="code-block">{
+  <span class="property">"success"</span>: <span class="keyword">false</span>,
+  <span class="property">"error"</span>: <span class="string">"Device not found"</span>
+}</div>
+                    <p style="margin-top: 10px;">The specified device_id does not exist in the system.</p>
+                </div>
+                
+                <div class="endpoint">
+                    <h4>Invalid Authentication</h4>
+                    <div class="code-block">{
+  <span class="property">"success"</span>: <span class="keyword">false</span>,
+  <span class="property">"error"</span>: <span class="string">"Invalid credentials"</span>
+}</div>
+                    <p style="margin-top: 10px;">The provided Basic Auth credentials are incorrect.</p>
+                </div>
+                
+                <div class="endpoint">
+                    <h4>Geocoding Failed</h4>
+                    <div class="code-block">{
+  <span class="property">"success"</span>: <span class="keyword">false</span>,
+  <span class="property">"error"</span>: <span class="string">"Failed to geocode address"</span>
+}</div>
+                    <p style="margin-top: 10px;">The provided address could not be converted to coordinates.</p>
+                </div>
+                
+                <div class="endpoint">
+                    <h4>Weather Data Unavailable</h4>
+                    <div class="code-block">{
+  <span class="property">"success"</span>: <span class="keyword">false</span>,
+  <span class="property">"error"</span>: <span class="string">"Weather data not available"</span>
+}</div>
+                    <p style="margin-top: 10px;">Unable to fetch weather data from the provider.</p>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="text-align: center; padding: 40px 0; color: #999; border-top: 2px solid #e0e0e0; margin-top: 50px;">
+                <p>Weather Display API v1.0</p>
+                <p style="margin-top: 10px;">
+                    <a href="/admin" style="color: #667eea; text-decoration: none; margin: 0 10px;">Admin Panel</a> |
+                    <a href="/" style="color: #667eea; text-decoration: none; margin: 0 10px;">Home</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <a href="#overview" class="back-to-top">↑ Top</a>
+</body>
+</html>
+
+
