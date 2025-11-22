@@ -12,7 +12,7 @@
 1. `sudo vim /etc/weather/.env` (or `cat <<'EOF' > /etc/weather/.env ...` via CI).
 2. Ensure permissions remain `600`.
 
-## Step 1: Pull latest code and rebuild
+## Step 1: Pull latest code and rebuild (manual)
 
 ```bash
 sudo scripts/deploy.sh
@@ -24,6 +24,33 @@ This script:
 - Builds the Docker image.
 - Stops the old container and starts a new one with `--env-file /etc/weather/.env`.
 - Binds `/etc/weather/weather_display.db` into the container.
+
+## GitHub Actions automatic deploy
+
+Once bootstrapped, pushes to `main` can automatically update the droplet.
+
+### Secrets to store in GitHub
+
+| Name | Description |
+| --- | --- |
+| `DO_HOST` | Droplet public IP or hostname |
+| `DO_USER` | SSH user (`root` or sudo-enabled account) |
+| `SSH_PRIVATE_KEY` | Private key that matches the droplet’s deploy key |
+| `ASTRONOMY_API_ID` | Astronomy API app ID |
+| `ASTRONOMY_API_SECRET` | Astronomy API secret |
+| `DB_PATH` | Optional override for the SQLite file (default `/etc/weather/weather_display.db`) |
+| `PORT` | Port the app should listen on (default `8000`) |
+
+### Workflow behavior
+
+On push to `main`:
+
+1. Checkout the repo.
+2. Load the SSH key, add GitHub + droplet host to `known_hosts`.
+3. SSH into the droplet, rewrite `/etc/weather/.env` from GitHub Secrets, and secure the file.
+4. Run `git pull` followed by `sudo scripts/deploy.sh`, which rebuilds the image and restarts the container.
+
+You can find the workflow template in `.github/workflows/deploy.yml`. If you need to run environment-only updates (no code change), rerun the workflow or manually overwrite `/etc/weather/.env` and invoke `scripts/deploy.sh`.
 
 ## Step 2: Optional migrations
 

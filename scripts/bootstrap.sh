@@ -210,8 +210,11 @@ server {
     }
 }
 EOF
-
   ln -sf "$NGINX_SITE" "$NGINX_LINK"
+  if [[ -e /etc/nginx/sites-enabled/default ]]; then
+    log "Disabling nginx default site"
+    rm -f /etc/nginx/sites-enabled/default
+  fi
   nginx -t
   systemctl restart nginx
 }

@@ -1,0 +1,50 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up SSH keys
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -F github.com || ssh-keyscan github.com >> ~/.ssh/known_hosts
+          ssh-keygen -F "${{ secrets.DO_HOST }}" || ssh-keyscan -H "${{ secrets.DO_HOST }}" >> ~/.ssh/known_hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DO_HOST: ${{ secrets.DO_HOST }}
+
+      - name: Push secrets to droplet
+        run: |
+          ssh -o StrictHostKeyChecking=no "${{ secrets.DO_USER }}@${{ secrets.DO_HOST }}" "cat <<'EOF' | sudo tee /etc/weather/.env >/dev/null
+          DB_PATH=${{ secrets.DB_PATH }}
+          PORT=${{ secrets.PORT }}
+          ASTRONOMY_API_ID=${{ secrets.ASTRONOMY_API_ID }}
+          ASTRONOMY_API_SECRET=${{ secrets.ASTRONOMY_API_SECRET }}
+          EOF
+          sudo chown root:root /etc/weather/.env
+          sudo chmod 600 /etc/weather/.env"
+        env:
+          DB_PATH: ${{ secrets.DB_PATH }}
+          PORT: ${{ secrets.PORT }}
+          ASTRONOMY_API_ID: ${{ secrets.ASTRONOMY_API_ID }}
+          ASTRONOMY_API_SECRET: ${{ secrets.ASTRONOMY_API_SECRET }}
+          DO_USER: ${{ secrets.DO_USER }}
+          DO_HOST: ${{ secrets.DO_HOST }}
+
+      - name: Trigger remote deployment
+        run: |
+          ssh -o StrictHostKeyChecking=no "${{ secrets.DO_USER }}@${{ secrets.DO_HOST }}" "cd /srv/weather && git pull origin main && sudo scripts/deploy.sh"
+        env:
+          DO_USER: ${{ secrets.DO_USER }}
+          DO_HOST: ${{ secrets.DO_HOST }}
+
