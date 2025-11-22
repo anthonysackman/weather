@@ -152,6 +152,19 @@ function setup_repo() {
   git clone "$repo_url" "$REPO_DIR"
 }
 
+function install_python_dependencies() {
+  log "Installing Python dependencies"
+
+  log "Ensuring pip is up to date"
+  python3 -m pip install --upgrade pip setuptools wheel
+
+  if [[ -f "${REPO_DIR}/requirements.txt" ]]; then
+    python3 -m pip install -r "${REPO_DIR}/requirements.txt"
+  else
+    log "No requirements.txt found in ${REPO_DIR}"
+  fi
+}
+
 function run_create_admin() {
   if ! confirm "Would you like to run create_admin.py now?"; then
     return
@@ -198,6 +211,8 @@ function main() {
   ensure_package curl
   ensure_package docker.io
   ensure_package nginx
+  ensure_package python3
+  ensure_package python3-pip
 
   systemctl enable --now docker
 
@@ -208,6 +223,8 @@ function main() {
   write_env_file
 
   setup_repo
+
+  install_python_dependencies
 
   run_create_admin
 
