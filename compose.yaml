@@ -1,6 +1,8 @@
 services:
   weather-api:
     build: .
+    environment:
+      - DB_PATH=/app/weather_display.db
     env_file:
       - ${ENV_FILE:-/etc/weather/.env}
     volumes:

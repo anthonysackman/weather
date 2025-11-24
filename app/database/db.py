@@ -10,7 +10,9 @@ from app.database.models import Device, User, APIKey
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.getenv("DB_PATH", "./weather_display.db")
+DB_PATH = os.getenv("DB_PATH")
+if not DB_PATH:
+    raise RuntimeError("DB_PATH environment variable must be set")
 
 
 class Database:
@@ -227,7 +229,9 @@ class Database:
         """Delete a device."""
         try:
             async with aiosqlite.connect(self.db_path) as db:
-                await db.execute("DELETE FROM devices WHERE device_id = ?", (device_id,))
+                await db.execute(
+                    "DELETE FROM devices WHERE device_id = ?", (device_id,)
+                )
                 await db.commit()
                 logger.info(f"Deleted device {device_id}")
                 return True
@@ -251,7 +255,14 @@ class Database:
                     INSERT INTO users (username, email, password_hash, role, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                    (user.username, user.email, user.password_hash, user.role, user.created_at, user.updated_at),
+                    (
+                        user.username,
+                        user.email,
+                        user.password_hash,
+                        user.role,
+                        user.created_at,
+                        user.updated_at,
+                    ),
                 )
                 await db.commit()
                 user.id = cursor.lastrowid
@@ -317,7 +328,9 @@ class Database:
         try:
             async with aiosqlite.connect(self.db_path) as db:
                 db.row_factory = aiosqlite.Row
-                async with db.execute("SELECT * FROM users ORDER BY username") as cursor:
+                async with db.execute(
+                    "SELECT * FROM users ORDER BY username"
+                ) as cursor:
                     rows = await cursor.fetchall()
                     return [
                         User(
@@ -387,7 +400,9 @@ class Database:
                 )
                 await db.commit()
                 api_key.id = cursor.lastrowid
-                logger.info(f"Created API key: {api_key.key_id} for user {api_key.user_id}")
+                logger.info(
+                    f"Created API key: {api_key.key_id} for user {api_key.user_id}"
+                )
                 return api_key
         except aiosqlite.IntegrityError:
             logger.error(f"API key {api_key.key_id} already exists")
@@ -416,7 +431,9 @@ class Database:
                             created_at=row["created_at"],
                             expires_at=row["expires_at"],
                             secret_viewed=bool(row["secret_viewed"]),
-                            pending_secret=row["pending_secret"] if "pending_secret" in row.keys() else None,
+                            pending_secret=row["pending_secret"]
+                            if "pending_secret" in row.keys()
+                            else None,
                         )
                     return None
         except Exception as e:
@@ -444,7 +461,9 @@ class Database:
                             created_at=row["created_at"],
                             expires_at=row["expires_at"],
                             secret_viewed=bool(row["secret_viewed"]),
-                            pending_secret=row["pending_secret"] if "pending_secret" in row.keys() else None,
+                            pending_secret=row["pending_secret"]
+                            if "pending_secret" in row.keys()
+                            else None,
                         )
                         for row in rows
                     ]
@@ -458,16 +477,20 @@ class Database:
             async with aiosqlite.connect(self.db_path) as db:
                 await db.execute(
                     "UPDATE api_keys SET secret_viewed = 1, pending_secret = NULL WHERE key_id = ?",
-                    (key_id,)
+                    (key_id,),
                 )
                 await db.commit()
-                logger.info(f"Marked API key {key_id} as viewed and cleared pending secret")
+                logger.info(
+                    f"Marked API key {key_id} as viewed and cleared pending secret"
+                )
                 return True
         except Exception as e:
             logger.error(f"Failed to mark API key as viewed: {e}")
             return False
 
-    async def regenerate_api_key_secret(self, key_id: str, new_secret_hash: str, new_secret: str) -> bool:
+    async def regenerate_api_key_secret(
+        self, key_id: str, new_secret_hash: str, new_secret: str
+    ) -> bool:
         """Regenerate the secret for an API key."""
         try:
             async with aiosqlite.connect(self.db_path) as db:
@@ -477,7 +500,7 @@ class Database:
                     SET key_secret_hash = ?, secret_viewed = 0, pending_secret = ?
                     WHERE key_id = ?
                     """,
-                    (new_secret_hash, new_secret, key_id)
+                    (new_secret_hash, new_secret, key_id),
                 )
                 await db.commit()
                 logger.info(f"Regenerated secret for API key {key_id}")
@@ -506,7 +529,9 @@ class Database:
                             created_at=row["created_at"],
                             expires_at=row["expires_at"],
                             secret_viewed=bool(row["secret_viewed"]),
-                            pending_secret=row["pending_secret"] if "pending_secret" in row.keys() else None,
+                            pending_secret=row["pending_secret"]
+                            if "pending_secret" in row.keys()
+                            else None,
                         )
                         for row in rows
                     ]
@@ -573,4 +598,3 @@ class Database:
 
 # Global database instance
 db = Database()
-
