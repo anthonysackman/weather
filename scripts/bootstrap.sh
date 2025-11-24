@@ -52,6 +52,24 @@ function ensure_package() {
   fi
 }
 
+function install_docker_compose_plugin() {
+  if dpkg -s docker-compose-plugin &> /dev/null; then
+    log "docker compose plugin already installed"
+    return
+  fi
+
+  log "Adding Docker repo for compose plugin"
+  mkdir -p /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+    $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+
+  apt-get update
+  ensure_package docker-compose-plugin
+}
+
 function ensure_dir() {
   local dir="$1"
   if [[ ! -d "$dir" ]]; then
@@ -249,7 +267,9 @@ function main() {
   apt-get update
   ensure_package git
   ensure_package curl
+  ensure_package gnupg
   ensure_package docker.io
+  install_docker_compose_plugin
   ensure_package nginx
   ensure_package python3
   ensure_package python3-pip
