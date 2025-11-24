@@ -6,6 +6,7 @@ from sanic.request import Request
 from app.services.weather_client import WeatherClient
 from app.services.geo_client import GeoClient
 from app.services.astronomy_client import AstronomyClient
+from app.services.air_quality_client import AirQualityClient
 import logging
 
 logger = logging.getLogger(__name__)
@@ -632,6 +633,66 @@ async def test_weather(request: Request):
         else:
             return json(
                 {"success": False, "error": "Weather data not available"}, status=500
+            )
+
+    except ValueError:
+        return json(
+            {"success": False, "error": "Invalid latitude or longitude"}, status=400
+        )
+
+
+@main_bp.get("/airquality")
+async def test_air_quality(request: Request):
+    """Test air quality client."""
+    try:
+        lat = float(request.args.get("lat", "40.7128"))
+        lon = float(request.args.get("lon", "-74.0060"))
+        timezone = request.args.get("timezone", "America/New_York")
+
+        air_quality_client = AirQualityClient()
+
+        # Get air quality data
+        air_quality = await air_quality_client.get_air_quality(lat, lon, timezone)
+
+        if air_quality:
+            return json(
+                {
+                    "success": True,
+                    "air_quality": {
+                        # Overall AQI
+                        "aqi": air_quality.aqi,
+                        "category": air_quality.category,
+                        "dominant_pollutant": air_quality.dominant_pollutant,
+                        "health_message": air_quality.health_message,
+                        "timestamp": air_quality.timestamp,
+                        # Individual pollutants (µg/m³)
+                        "pollutants": {
+                            "pm2_5": air_quality.pm2_5,
+                            "pm10": air_quality.pm10,
+                            "ozone": air_quality.ozone,
+                            "nitrogen_dioxide": air_quality.nitrogen_dioxide,
+                            "carbon_monoxide": air_quality.carbon_monoxide,
+                            "sulfur_dioxide": air_quality.sulfur_dioxide,
+                        },
+                        # Individual AQI values
+                        "pollutant_aqi": {
+                            "pm2_5_aqi": air_quality.pm2_5_aqi,
+                            "pm10_aqi": air_quality.pm10_aqi,
+                            "ozone_aqi": air_quality.ozone_aqi,
+                            "no2_aqi": air_quality.no2_aqi,
+                            "co_aqi": air_quality.co_aqi,
+                            "so2_aqi": air_quality.so2_aqi,
+                        },
+                        # Hourly forecast
+                        "hourly_forecast": air_quality.hourly_forecast,
+                    },
+                    "attribution": "Data provided by CAMS ENSEMBLE via Open-Meteo Air Quality API",
+                }
+            )
+        else:
+            return json(
+                {"success": False, "error": "Air quality data not available"},
+                status=500,
             )
 
     except ValueError:

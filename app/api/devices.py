@@ -11,6 +11,7 @@ from app.database.models import Device
 from app.services.address_client import AddressClient
 from app.services.weather_client import WeatherClient
 from app.services.astronomy_client import AstronomyClient
+from app.services.air_quality_client import AirQualityClient
 from datetime import datetime
 import secrets
 
@@ -57,7 +58,7 @@ async def create_device(request: Request):
     """Create a new device (all authenticated users can create)."""
     try:
         user = request.ctx.user  # Get authenticated user
-        
+
         data = request.json
         name = data.get("name")
         address = data.get("address")
@@ -160,6 +161,7 @@ async def update_device(request: Request, device_id: str):
     try:
         data = request.json
         import sys
+
         print(f"========== [UPDATE] Received data: {data} ==========", flush=True)
         sys.stdout.flush()
         logger.info(f"[UPDATE] Received data: {data}")
@@ -180,7 +182,7 @@ async def update_device(request: Request, device_id: str):
         if "address" in data:
             old_addr = (device.address or "").strip().lower()
             new_addr = (data["address"] or "").strip().lower()
-            
+
             if old_addr != new_addr:
                 # Address changed, geocode it
                 address_client = AddressClient()
@@ -232,19 +234,22 @@ async def update_device(request: Request, device_id: str):
 async def delete_device(request: Request, device_id: str):
     """Delete device (users can delete their own, admins can delete any)."""
     user = request.ctx.user
-    
+
     # Get device to check ownership
     device = await db.get_device(device_id)
     if not device:
         return json({"success": False, "error": "Device not found"}, status=404)
-    
+
     # Check if user owns the device or is admin
-    if device.user_id != user.id and user.role != 'admin':
+    if device.user_id != user.id and user.role != "admin":
         return json(
-            {"success": False, "error": "Unauthorized - you can only delete your own devices"},
-            status=403
+            {
+                "success": False,
+                "error": "Unauthorized - you can only delete your own devices",
+            },
+            status=403,
         )
-    
+
     success = await db.delete_device(device_id)
 
     if not success:
@@ -275,11 +280,15 @@ async def get_device_weather(request: Request, device_id: str):
     # Get weather data
     weather_client = WeatherClient()
     astronomy_client = AstronomyClient()
+    air_quality_client = AirQualityClient()
 
     weather = await weather_client.get_current_weather(
         device.lat, device.lon, device.timezone
     )
     moon_phase = await astronomy_client.get_moon_phase(device.lat, device.lon)
+    air_quality = await air_quality_client.get_air_quality(
+        device.lat, device.lon, device.timezone
+    )
 
     if not weather:
         return json(
@@ -333,6 +342,17 @@ async def get_device_weather(request: Request, device_id: str):
                 if moon_phase
                 else None,
             },
+            "air_quality": {
+                "aqi": air_quality.aqi if air_quality else 0,
+                "category": air_quality.category if air_quality else "Unknown",
+                "dominant_pollutant": air_quality.dominant_pollutant
+                if air_quality
+                else "Unknown",
+                "pm2_5": air_quality.pm2_5 if air_quality else 0.0,
+                "pm10": air_quality.pm10 if air_quality else 0.0,
+            }
+            if air_quality
+            else None,
         }
     )
 
@@ -343,12 +363,12 @@ async def get_device_data(request: Request, device_id: str):
     """Get flexible filtered data for a device (web apps, testing)."""
     # Get device configuration
     device = await db.get_device(device_id)
-    
+
     # Check if user owns this device (or is admin)
-    if request.ctx.user.id != device.user_id and request.ctx.user.role != 'admin':
+    if request.ctx.user.id != device.user_id and request.ctx.user.role != "admin":
         return json(
             {"success": False, "error": "Unauthorized - you don't own this device"},
-            status=403
+            status=403,
         )
 
     if not device:
@@ -364,20 +384,29 @@ async def get_device_data(request: Request, device_id: str):
     await db.update_device_heartbeat(device_id)
 
     # Parse query parameters
-    include = request.args.get("include", "").split(",") if request.args.get("include") else []
-    exclude = request.args.get("exclude", "").split(",") if request.args.get("exclude") else []
+    include = (
+        request.args.get("include", "").split(",")
+        if request.args.get("include")
+        else []
+    )
+    exclude = (
+        request.args.get("exclude", "").split(",")
+        if request.args.get("exclude")
+        else []
+    )
     hourly_limit = int(request.args.get("hourly_limit", 168))
     daily_limit = int(request.args.get("daily_limit", 7))
 
     # Determine what to include (default: everything)
     include_all = not include  # If no include specified, include everything
-    
+
     categories = {
         "weather": include_all or "weather" in include,
         "hourly": include_all or "hourly" in include,
         "daily": include_all or "daily" in include,
         "lunar": include_all or "lunar" in include,
         "astronomy": include_all or "astronomy" in include,
+        "air_quality": include_all or "air_quality" in include,
     }
 
     # Apply excludes
@@ -387,7 +416,12 @@ async def get_device_data(request: Request, device_id: str):
 
     # Get weather data if needed
     weather = None
-    if categories["weather"] or categories["hourly"] or categories["daily"] or categories["astronomy"]:
+    if (
+        categories["weather"]
+        or categories["hourly"]
+        or categories["daily"]
+        or categories["astronomy"]
+    ):
         weather_client = WeatherClient()
         weather = await weather_client.get_current_weather(
             device.lat, device.lon, device.timezone
@@ -403,6 +437,14 @@ async def get_device_data(request: Request, device_id: str):
         astronomy_client = AstronomyClient()
         moon_phase = await astronomy_client.get_moon_phase(device.lat, device.lon)
 
+    # Get air quality if needed
+    air_quality = None
+    if categories["air_quality"]:
+        air_quality_client = AirQualityClient()
+        air_quality = await air_quality_client.get_air_quality(
+            device.lat, device.lon, device.timezone
+        )
+
     # Build response
     response = {
         "success": True,
@@ -411,7 +453,7 @@ async def get_device_data(request: Request, device_id: str):
             "name": device.name,
             "address": device.address,
         },
-        "data": {}
+        "data": {},
     }
 
     # Add weather data
@@ -462,6 +504,29 @@ async def get_device_data(request: Request, device_id: str):
             "angular_diameter": moon_phase.angular_diameter,
         }
 
+    # Add air quality data
+    if categories["air_quality"] and air_quality:
+        response["data"]["air_quality"] = {
+            "aqi": air_quality.aqi,
+            "category": air_quality.category,
+            "dominant_pollutant": air_quality.dominant_pollutant,
+            "health_message": air_quality.health_message,
+            "pm2_5": air_quality.pm2_5,
+            "pm10": air_quality.pm10,
+            "ozone": air_quality.ozone,
+            "nitrogen_dioxide": air_quality.nitrogen_dioxide,
+            "carbon_monoxide": air_quality.carbon_monoxide,
+            "sulfur_dioxide": air_quality.sulfur_dioxide,
+            "pm2_5_aqi": air_quality.pm2_5_aqi,
+            "pm10_aqi": air_quality.pm10_aqi,
+            "ozone_aqi": air_quality.ozone_aqi,
+            "no2_aqi": air_quality.no2_aqi,
+            "co_aqi": air_quality.co_aqi,
+            "so2_aqi": air_quality.so2_aqi,
+            "timestamp": air_quality.timestamp,
+            "hourly_forecast": air_quality.hourly_forecast,
+        }
+
     return json(response)
 
 
@@ -471,12 +536,12 @@ async def get_device_esp(request: Request, device_id: str):
     """Get minimal optimized data for ESP32 (memory-conscious)."""
     # Get device configuration
     device = await db.get_device(device_id)
-    
+
     # Check if user owns this device (or is admin)
-    if request.ctx.user.id != device.user_id and request.ctx.user.role != 'admin':
+    if request.ctx.user.id != device.user_id and request.ctx.user.role != "admin":
         return json(
             {"success": False, "error": "Unauthorized - you don't own this device"},
-            status=403
+            status=403,
         )
 
     if not device:
@@ -494,11 +559,15 @@ async def get_device_esp(request: Request, device_id: str):
     # Get weather data
     weather_client = WeatherClient()
     astronomy_client = AstronomyClient()
+    air_quality_client = AirQualityClient()
 
     weather = await weather_client.get_current_weather(
         device.lat, device.lon, device.timezone
     )
     moon_phase = await astronomy_client.get_moon_phase(device.lat, device.lon)
+    air_quality = await air_quality_client.get_air_quality(
+        device.lat, device.lon, device.timezone
+    )
 
     if not weather:
         return json(
@@ -509,8 +578,24 @@ async def get_device_esp(request: Request, device_id: str):
     def get_wind_direction(degrees):
         if degrees is None:
             return "N"
-        directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 
-                     'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+        directions = [
+            "N",
+            "NNE",
+            "NE",
+            "ENE",
+            "E",
+            "ESE",
+            "SE",
+            "SSE",
+            "S",
+            "SSW",
+            "SW",
+            "WSW",
+            "W",
+            "WNW",
+            "NW",
+            "NNW",
+        ]
         return directions[round(degrees / 22.5) % 16]
 
     # Helper function to format time (HH:MM)
@@ -519,22 +604,26 @@ async def get_device_esp(request: Request, device_id: str):
             return "00:00"
         try:
             from datetime import datetime
-            dt = datetime.fromisoformat(iso_time.replace('Z', '+00:00'))
+
+            dt = datetime.fromisoformat(iso_time.replace("Z", "+00:00"))
             return dt.strftime("%H:%M")
         except:
             return "00:00"
 
     # Return minimal flat structure
-    return json({
-        "temp": round(weather.temperature, 1),
-        "feels": round(weather.feels_like, 1),
-        "humid": weather.humidity,
-        "condition": weather.weather_description,
-        "wind_speed": round(weather.windspeed, 1),
-        "wind_dir": get_wind_direction(weather.winddirection),
-        "sunrise": format_time(weather.sunrise),
-        "sunset": format_time(weather.sunset),
-        "moon_phase": moon_phase.phase if moon_phase else "Unknown",
-        "moon_illum": round(moon_phase.illumination) if moon_phase else 0,
-    })
-
+    return json(
+        {
+            "temp": round(weather.temperature, 1),
+            "feels": round(weather.feels_like, 1),
+            "humid": weather.humidity,
+            "condition": weather.weather_description,
+            "wind_speed": round(weather.windspeed, 1),
+            "wind_dir": get_wind_direction(weather.winddirection),
+            "sunrise": format_time(weather.sunrise),
+            "sunset": format_time(weather.sunset),
+            "moon_phase": moon_phase.phase if moon_phase else "Unknown",
+            "moon_illum": round(moon_phase.illumination) if moon_phase else 0,
+            "aqi": air_quality.aqi if air_quality else 0,
+            "aqi_category": air_quality.category if air_quality else "Unknown",
+        }
+    )

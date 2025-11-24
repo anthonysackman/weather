@@ -270,6 +270,7 @@ function main() {
   ensure_package gnupg
   ensure_package docker.io
   install_docker_compose_plugin
+  ensure_package docker-compose
   ensure_package nginx
   ensure_package python3
   ensure_package python3-pip

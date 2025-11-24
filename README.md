@@ -7,13 +7,15 @@ A comprehensive weather API designed for ESP32 weather displays with device mana
 ## Features
 
 - 🌤️ **Comprehensive Weather Data** - Current conditions, hourly/daily forecasts, moon phase
+- 🌫️ **Air Quality Monitoring** - Real-time AQI and pollutant data (PM2.5, PM10, O3, NO2, CO, SO2)
 - 📍 **Address Geocoding** - Convert street addresses to coordinates automatically
 - 🔐 **Secure Admin Interface** - Basic auth protected device management
 - 🎯 **Device Management** - Register and configure multiple ESP32 devices
 - 🌍 **Multiple Data Sources**
-  - Open-Meteo API (weather & geocoding)
+  - Open-Meteo API (weather, air quality & geocoding)
   - AstronomyAPI (moon phase)
   - OpenStreetMap Nominatim (address geocoding)
+  - CAMS ENSEMBLE (air quality data via Open-Meteo)
 
 ## Quick Start
 
@@ -87,9 +89,29 @@ Returns comprehensive weather data for a registered device.
       "phase": "Waxing Crescent",
       "illumination": 23.5
     }
+  },
+  "air_quality": {
+    "aqi": 42,
+    "category": "Good",
+    "dominant_pollutant": "PM2.5",
+    "pm2_5": 10.2,
+    "pm10": 18.5
   }
 }
 ```
+
+#### Get Flexible Device Data
+```
+GET /api/device/{device_id}/data?include=weather,air_quality&hourly_limit=24
+```
+
+Returns filtered data for web applications. Supports query parameters:
+- `include` - Comma-separated categories: `weather`, `hourly`, `daily`, `lunar`, `astronomy`, `air_quality`
+- `exclude` - Comma-separated categories to exclude
+- `hourly_limit` - Number of hourly forecast hours (default: 168)
+- `daily_limit` - Number of daily forecast days (default: 7)
+
+If no `include` is specified, all categories are returned by default.
 
 ### Admin Endpoints (Basic Auth Required)
 
@@ -144,6 +166,7 @@ These endpoints are available for testing:
 - `GET /` - Test interface
 - `GET /geo?city=Miami&state=FL` - Geocoding test
 - `GET /weather?lat=25.7617&lon=-80.1918&timezone=America/New_York` - Weather test
+- `GET /airquality?lat=25.7617&lon=-80.1918&timezone=America/New_York` - Air quality test
 - `GET /moon?lat=25.7617&lon=-80.1918` - Moon phase test
 - `GET /combined?city=Miami&state=FL` - Combined test
 
@@ -241,6 +264,7 @@ weather/
 │   │   └── models.py        # Data models
 │   ├── services/
 │   │   ├── address_client.py    # Address geocoding
+│   │   ├── air_quality_client.py # Air quality & AQI
 │   │   ├── astronomy_client.py  # Moon phase
 │   │   ├── geo_client.py        # City/state geocoding
 │   │   └── weather_client.py    # Weather data
@@ -319,8 +343,20 @@ This API is designed to be easily gifted:
 
 MIT License - Feel free to use this for personal or commercial projects!
 
-## Credits
+## Credits & Attribution
 
 - Weather data: [Open-Meteo](https://open-meteo.com/)
+- Air quality data: [CAMS ENSEMBLE](https://ads.atmosphere.copernicus.eu/cdsapp#!/dataset/cams-global-atmospheric-composition-forecasts) via [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api)
 - Moon phase: [AstronomyAPI](https://astronomyapi.com/)
 - Geocoding: [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/)
+
+### Air Quality Data Attribution
+
+Air quality data is provided by the Copernicus Atmosphere Monitoring Service (CAMS) ENSEMBLE model, accessed through the Open-Meteo Air Quality API. The data includes:
+- PM2.5 and PM10 particulate matter
+- Ozone (O₃)
+- Nitrogen Dioxide (NO₂)
+- Carbon Monoxide (CO)
+- Sulfur Dioxide (SO₂)
+
+The Air Quality Index (AQI) is calculated using the US EPA standard based on these pollutant concentrations.
