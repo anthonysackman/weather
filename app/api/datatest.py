@@ -94,6 +94,25 @@ async def test_page(request: Request):
             <div id="weather-result"></div>
         </div>
 
+        <!-- Air Quality Test -->
+        <div class="container">
+            <h2>🌫️ Test Air Quality</h2>
+            <div class="form-group">
+                <label for="aq-lat">Latitude:</label>
+                <input type="number" id="aq-lat" step="any" placeholder="40.7128" value="40.7128">
+            </div>
+            <div class="form-group">
+                <label for="aq-lon">Longitude:</label>
+                <input type="number" id="aq-lon" step="any" placeholder="-74.0060" value="-74.0060">
+            </div>
+            <div class="form-group">
+                <label for="aq-timezone">Timezone:</label>
+                <input type="text" id="aq-timezone" placeholder="America/New_York" value="America/New_York">
+            </div>
+            <button onclick="testAirQuality()">Get Air Quality</button>
+            <div id="airquality-result"></div>
+        </div>
+
         <!-- Moon Phase Test -->
         <div class="container">
             <h2>🌙 Test Moon Phase</h2>
@@ -229,6 +248,11 @@ async def test_page(request: Request):
                                 document.getElementById('lon').value = lon.toFixed(4);
                                 document.getElementById('timezone').value = data.timezone || 'America/New_York';
                                 
+                                // Fill air quality form
+                                document.getElementById('aq-lat').value = lat.toFixed(4);
+                                document.getElementById('aq-lon').value = lon.toFixed(4);
+                                document.getElementById('aq-timezone').value = data.timezone || 'America/New_York';
+                                
                                 // Fill city/state forms
                                 document.getElementById('city').value = data.city || '';
                                 document.getElementById('state').value = data.state || '';
@@ -264,6 +288,8 @@ async def test_page(request: Request):
                                 // Still fill coordinates even if reverse geocoding fails
                                 document.getElementById('lat').value = lat.toFixed(4);
                                 document.getElementById('lon').value = lon.toFixed(4);
+                                document.getElementById('aq-lat').value = lat.toFixed(4);
+                                document.getElementById('aq-lon').value = lon.toFixed(4);
                                 
                                 statusDiv.innerHTML = `
                                     <div class="result">
@@ -277,6 +303,8 @@ async def test_page(request: Request):
                             // Still fill coordinates even if API fails
                             document.getElementById('lat').value = lat.toFixed(4);
                             document.getElementById('lon').value = lon.toFixed(4);
+                            document.getElementById('aq-lat').value = lat.toFixed(4);
+                            document.getElementById('aq-lon').value = lon.toFixed(4);
                             
                             statusDiv.innerHTML = `
                                 <div class="result">
@@ -339,11 +367,15 @@ async def test_page(request: Request):
                         </div>
                     `;
                     
-                    // Auto-populate weather form if geocoding was successful
+                    // Auto-populate weather and air quality forms if geocoding was successful
                     if (data.success && data.location) {
                         document.getElementById('lat').value = data.location.lat.toFixed(4);
                         document.getElementById('lon').value = data.location.lon.toFixed(4);
                         document.getElementById('timezone').value = data.location.timezone;
+                        
+                        document.getElementById('aq-lat').value = data.location.lat.toFixed(4);
+                        document.getElementById('aq-lon').value = data.location.lon.toFixed(4);
+                        document.getElementById('aq-timezone').value = data.location.timezone;
                         
                         // Add visual feedback
                         const weatherContainer = document.querySelector('.container:nth-child(3)');
@@ -471,6 +503,115 @@ async def test_page(request: Request):
                         resultDiv.innerHTML = `
                             <div class="result error">
                                 <h3>Weather Result:</h3>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>Error:</h3>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            async function testAirQuality() {
+                const lat = document.getElementById('aq-lat').value;
+                const lon = document.getElementById('aq-lon').value;
+                const timezone = document.getElementById('aq-timezone').value;
+                const resultDiv = document.getElementById('airquality-result');
+                
+                try {
+                    const response = await fetch(`/airquality?lat=${lat}&lon=${lon}&timezone=${encodeURIComponent(timezone)}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.air_quality) {
+                        const aq = data.air_quality;
+                        
+                        // Get AQI color
+                        let aqiColor = '#00e400'; // Good
+                        if (aq.aqi > 300) aqiColor = '#7e0023'; // Hazardous
+                        else if (aq.aqi > 200) aqiColor = '#99004c'; // Very Unhealthy
+                        else if (aq.aqi > 150) aqiColor = '#ff0000'; // Unhealthy
+                        else if (aq.aqi > 100) aqiColor = '#ff7e00'; // Unhealthy for Sensitive Groups
+                        else if (aq.aqi > 50) aqiColor = '#ffff00'; // Moderate
+                        
+                        resultDiv.innerHTML = `
+                            <div class="result">
+                                <h3>🌫️ Air Quality</h3>
+                                <div style="background: ${aqiColor}; color: ${aq.aqi > 150 ? 'white' : 'black'}; padding: 20px; border-radius: 8px; text-align: center; margin: 10px 0;">
+                                    <div style="font-size: 3em; font-weight: bold;">${aq.aqi}</div>
+                                    <div style="font-size: 1.5em; font-weight: bold;">${aq.category}</div>
+                                    <div style="font-size: 0.9em; margin-top: 5px;">Dominant Pollutant: ${aq.dominant_pollutant}</div>
+                                </div>
+                                
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 10px 0;">
+                                    <strong>💡 Health Message:</strong><br>
+                                    ${aq.health_message}
+                                </div>
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 10px 0;">
+                                    <div>
+                                        <h4>Pollutant Concentrations (µg/m³)</h4>
+                                        <strong>PM2.5:</strong> ${aq.pollutants.pm2_5.toFixed(1)} (AQI: ${aq.pollutant_aqi.pm2_5_aqi})<br>
+                                        <strong>PM10:</strong> ${aq.pollutants.pm10.toFixed(1)} (AQI: ${aq.pollutant_aqi.pm10_aqi})<br>
+                                        <strong>O₃ (Ozone):</strong> ${aq.pollutants.ozone.toFixed(1)} (AQI: ${aq.pollutant_aqi.ozone_aqi})<br>
+                                        <strong>NO₂:</strong> ${aq.pollutants.nitrogen_dioxide.toFixed(1)} (AQI: ${aq.pollutant_aqi.no2_aqi})<br>
+                                        <strong>CO:</strong> ${aq.pollutants.carbon_monoxide.toFixed(1)} (AQI: ${aq.pollutant_aqi.co_aqi})<br>
+                                        <strong>SO₂:</strong> ${aq.pollutants.sulfur_dioxide.toFixed(1)} (AQI: ${aq.pollutant_aqi.so2_aqi})
+                                    </div>
+                                    <div>
+                                        <h4>AQI Scale Reference</h4>
+                                        <div style="font-size: 0.85em;">
+                                            <div style="padding: 3px; background: #00e400;">0-50: Good</div>
+                                            <div style="padding: 3px; background: #ffff00;">51-100: Moderate</div>
+                                            <div style="padding: 3px; background: #ff7e00;">101-150: Unhealthy for Sensitive</div>
+                                            <div style="padding: 3px; background: #ff0000; color: white;">151-200: Unhealthy</div>
+                                            <div style="padding: 3px; background: #99004c; color: white;">201-300: Very Unhealthy</div>
+                                            <div style="padding: 3px; background: #7e0023; color: white;">301+: Hazardous</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <details style="margin: 10px 0;">
+                                    <summary><strong>⏰ Hourly AQI Forecast</strong></summary>
+                                    <div style="margin-top: 10px; max-height: 200px; overflow-y: auto;">
+                                        ${aq.hourly_forecast.slice(0, 24).map(hour => {
+                                            let hourColor = '#00e400';
+                                            if (hour.aqi > 300) hourColor = '#7e0023';
+                                            else if (hour.aqi > 200) hourColor = '#99004c';
+                                            else if (hour.aqi > 150) hourColor = '#ff0000';
+                                            else if (hour.aqi > 100) hourColor = '#ff7e00';
+                                            else if (hour.aqi > 50) hourColor = '#ffff00';
+                                            
+                                            return `
+                                                <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9em;">
+                                                    <span><strong>${formatTime(hour.time)}</strong></span>
+                                                    <span style="background: ${hourColor}; padding: 2px 8px; border-radius: 3px; font-weight: bold;">${hour.aqi || 'N/A'}</span>
+                                                    <span>PM2.5: ${hour.pm2_5?.toFixed(1) || 'N/A'}</span>
+                                                    <span>O₃: ${hour.ozone?.toFixed(1) || 'N/A'}</span>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                </details>
+                                
+                                <div style="background: #e3f2fd; padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 0.85em;">
+                                    <strong>📊 Attribution:</strong> ${data.attribution}
+                                </div>
+                                
+                                <details style="margin: 10px 0;">
+                                    <summary><strong>🔍 Raw Data</strong></summary>
+                                    <pre style="font-size: 0.8em; max-height: 200px; overflow-y: auto;">${JSON.stringify(data, null, 2)}</pre>
+                                </details>
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div class="result error">
+                                <h3>Air Quality Result:</h3>
                                 <pre>${JSON.stringify(data, null, 2)}</pre>
                             </div>
                         `;
