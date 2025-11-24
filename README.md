@@ -267,11 +267,25 @@ You can customize this with the `DB_PATH` environment variable.
 
 ## Docker Deployment
 
-Build and run with Docker:
+Build and run with Docker Compose (the stack is defined in `compose.yaml`):
 
 ```bash
-docker build -t weather-api .
-docker run -p 8000:8000 -v $(pwd)/data:/app/data -e DB_PATH=/app/data/weather_display.db weather-api
+docker compose -f compose.yaml build
+docker compose -f compose.yaml up -d --force-recreate --remove-orphans
+```
+
+For local development you can override the production paths by setting `ENV_FILE`/`DB_FILE` before running Compose so it uses repo-local secrets:
+
+```bash
+mkdir -p etc/weather
+cat <<'EOF' > etc/weather/.env
+DB_PATH=./weather_display.db
+PORT=8000
+ASTRONOMY_API_ID=...
+ASTRONOMY_API_SECRET=...
+EOF
+
+ENV_FILE=./etc/weather/.env DB_FILE=./weather_display.db docker compose -f compose.yaml up -d --force-recreate --remove-orphans
 ```
 
 ## Security Notes

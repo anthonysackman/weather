@@ -15,6 +15,7 @@ jobs:
       - name: Set up SSH keys
         run: |
           mkdir -p ~/.ssh
+          touch ~/.ssh/known_hosts
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keygen -F github.com || ssh-keyscan github.com >> ~/.ssh/known_hosts
@@ -43,7 +44,7 @@ jobs:
 
       - name: Trigger remote deployment
         run: |
-          ssh -o StrictHostKeyChecking=no "${{ secrets.DO_USER }}@${{ secrets.DO_HOST }}" "cd /srv/weather && git pull origin main && sudo scripts/deploy.sh"
+          ssh -o StrictHostKeyChecking=no "${{ secrets.DO_USER }}@${{ secrets.DO_HOST }}" "cd /srv/weather && git pull origin main && export ENV_FILE=/etc/weather/.env && export DB_FILE=/etc/weather/weather_display.db && sudo scripts/deploy.sh"
         env:
           DO_USER: ${{ secrets.DO_USER }}
           DO_HOST: ${{ secrets.DO_HOST }}

@@ -4,8 +4,6 @@ set -euo pipefail
 REPO_DIR="/srv/weather"
 ENV_FILE="/etc/weather/.env"
 DB_FILE="/etc/weather/weather_display.db"
-CONTAINER_NAME="weather-api"
-IMAGE_NAME="weather-api:latest"
 
 function log() {
   echo "[deploy] $*"
@@ -30,17 +28,12 @@ function update_code() {
   git -C "$REPO_DIR" pull --ff-only
 }
 
-function build_image() {
-  log "Building Docker image"
-  docker build -t "$IMAGE_NAME" "$REPO_DIR"
+function refresh_compose() {
+  log "Rebuilding and restarting docker compose services"
+  docker compose -f "$REPO_DIR/compose.yaml" pull --quiet
+  docker compose -f "$REPO_DIR/compose.yaml" build
 }
 
-function stop_container() {
-  if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
-    log "Stopping existing container"
-    docker rm -f "$CONTAINER_NAME"
-  fi
-}
 
 function ensure_env() {
   if [[ ! -f "$ENV_FILE" ]]; then
@@ -57,26 +50,9 @@ function ensure_db_file() {
   chmod 660 "$DB_FILE"
 }
 
-function run_container() {
-  log "Starting container with env file"
-  mkdir -p "$(dirname "$DB_FILE")"
-  docker run -d \
-    --name "$CONTAINER_NAME" \
-    --env-file "$ENV_FILE" \
-    -v "$DB_FILE:/app/weather_display.db" \
-    -p 8000:8000 \
-    --restart unless-stopped \
-    "$IMAGE_NAME"
-}
-
-function migrate_db() {
-  local python_bin="$REPO_DIR/.venv/bin/python"
-  if [[ ! -x "$python_bin" ]]; then
-    python_bin="python3"
-  fi
-
-  log "Applying database migrations (if any)"
-  "$python_bin" "$REPO_DIR/app/database/db.py" --migrate || true
+function run_compose() {
+  log "Bringing up docker compose service"
+  docker compose -f "$REPO_DIR/compose.yaml" up -d --force-recreate --remove-orphans --quiet-pull
 }
 
 function main() {
@@ -85,9 +61,8 @@ function main() {
   ensure_env
   ensure_db_file
   update_code
-  build_image
-  stop_container
-  run_container
+  refresh_compose
+  run_compose
   log "Deploy complete."
 }
 

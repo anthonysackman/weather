@@ -18,12 +18,24 @@
 sudo scripts/deploy.sh
 ```
 
-This script:
+This script now:
 
 - Pulls the latest git commit from `main`.
-- Builds the Docker image.
-- Stops the old container and starts a new one with `--env-file /etc/weather/.env`.
-- Binds `/etc/weather/weather_display.db` into the container.
+- Ensures the SQLite file exists at `/etc/weather/weather_display.db`.
+- Calls `docker compose` (via `compose.yaml`) to rebuild and restart the `weather-api` service.
+- Uses `/etc/weather/.env` for configuration and the same path for the database.
+
+### Local development overrides
+
+If you want to run the Compose stack on your workstation, set the env vars so the service reads repo-local files:
+
+```bash
+export ENV_FILE=./etc/weather/.env
+export DB_FILE=./weather_display.db
+docker compose -f compose.yaml up -d --force-recreate --remove-orphans
+```
+
+The Compose file defaults to the `/etc/weather` paths but honors `ENV_FILE`/`DB_FILE` when they are provided, so you can keep secrets out of version control while still running locally.
 
 ## GitHub Actions automatic deploy
 

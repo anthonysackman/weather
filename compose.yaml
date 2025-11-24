@@ -1,0 +1,11 @@
+services:
+  weather-api:
+    build: .
+    env_file:
+      - ${ENV_FILE:-/etc/weather/.env}
+    volumes:
+      - ${DB_FILE:-/etc/weather/weather_display.db}:/app/weather_display.db
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
